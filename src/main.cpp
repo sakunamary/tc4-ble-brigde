@@ -11,20 +11,14 @@
 #include <HardwareSerial.h>
 
 #include <StringTokenizer.h>
-//#include <WebSerial.h>
-//
+
 
 #include "ArduinoJson.h"
 
-#include <pwmWrite.h>
-#include <ESP32Encoder.h>
-
-
-
 
 //SoftwareSerial Serial_in ;
-//spSoftwareSerial::UART Serial_in;// D10 RX_drumer  D9 TX_drumer 
- HardwareSerial Serial_in(1);
+//spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer 
+ HardwareSerial Serial_in(2);
 SemaphoreHandle_t xThermoDataMutex = NULL;
 
 AsyncWebServer server(80);
@@ -44,16 +38,6 @@ String MSG_token2400[4];
 user_wifi_t user_wifi = {" ", " ", false};
 data_to_artisan_t To_artisan = {1.0,2.0,3.0,4.0};
 
-//const uint32_t frequency = PWM_FREQ;
-const byte resolution = PWM_RESOLUTION; //pwm -0-4096
-
-int encoder_postion ;
-
-//pwm object 
-Pwm pwm = Pwm();
-
-// rotary encoder object
-ESP32Encoder encoder;
 
 TaskHandle_t xHandle_indicator;
 
@@ -298,7 +282,7 @@ void setup() {
             WiFi.macAddress(macAddr); 
             // Serial_debug.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
-            sprintf( ap_name ,"HB_WIFI_%02X%02X%02X",macAddr[0],macAddr[1],macAddr[2]);
+            sprintf( ap_name ,"TC4_WIFI_%02X%02X%02X",macAddr[0],macAddr[1],macAddr[2]);
             WiFi.softAP(ap_name, "12345678"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
         }
@@ -317,7 +301,7 @@ void setup() {
         ; // wait for serial port ready
     }
 
-    Serial.printf("\nHB_WIFI  STARTING...\n");
+    Serial.printf("\nWIFI  STARTING...\n");
     Serial.printf("\nSerial_in setup OK\n");
     Serial.printf("\nRead data from EEPROM...\n");
     // set up eeprom data
@@ -328,7 +312,7 @@ void setup() {
 
 if (user_wifi.Init_mode) 
 {
-    strcat(user_wifi.ssid,"HB_WIFI");
+    strcat(user_wifi.ssid,"TC4_WIFI");
     strcat(user_wifi.password,"12345678");
     user_wifi.Init_mode = false ;
     EEPROM.put(0, user_wifi);
