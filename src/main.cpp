@@ -215,54 +215,28 @@ void setup() {
 
 
     Serial.begin(BAUDRATE);
-    //Serial_in.begin(BAUDRATE,EspSoftwareSerial::SWSERIAL_8N1,10,9); //RX  TX
-    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
+    Serial.printf("\nWIFI  STARTING...\n");
   //初始化网络服务
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(user_wifi.ssid, user_wifi.password);
 
-    byte tries = 0;
-    while (WiFi.status() != WL_CONNECTED)
-    {
-
-        delay(1000);
-        Serial.println("wifi not ready");
-
-        if (tries++ > 7)
-        {
             WiFi.macAddress(macAddr); 
             // Serial_debug.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
             sprintf( ap_name ,"TC4_WIFI_%02X%02X%02X",macAddr[0],macAddr[1],macAddr[2]);
             WiFi.softAP(ap_name, "12345678"); // defualt IP address :192.168.4.1 password min 8 digis
-            break;
-        }
-        // show AP's IP
-    }
 
+ 
 
-  //Init BLE Serial
-  SerialBT.begin(ap_name);
-  SerialBT.setTimeout(10);
-
-    while (!Serial)
-    {
-        ; // wait for serial port ready
-    }
-
-    Serial.printf("\nWIFI  STARTING...\n");
-    Serial.printf("\nSerial_in setup OK\n");
-    Serial.printf("\nRead data from EEPROM...\n");
+   // Serial.printf("\nRead data from EEPROM...\n");
     // set up eeprom data
-    EEPROM.begin(sizeof(user_wifi));
-    EEPROM.get(0, user_wifi);
+     //EEPROM.begin(sizeof(user_wifi));
+    //EEPROM.get(0, user_wifi);
 
 
 
 
  //user_wifi.Init_mode = true ;
-
+/*
 if (user_wifi.Init_mode) 
 {
     strcat(user_wifi.ssid,"TC4_WIFI");
@@ -271,7 +245,7 @@ if (user_wifi.Init_mode)
     EEPROM.put(0, user_wifi);
     EEPROM.commit();
 }
-
+*/
     Serial.print("TC_WIFI's IP:");
 
     if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
@@ -284,6 +258,32 @@ if (user_wifi.Init_mode)
         Serial.println(IpAddressToString(WiFi.localIP()));
         local_IP = IpAddressToString(WiFi.localIP());
     }
+
+
+    //Serial_in.begin(BAUDRATE,EspSoftwareSerial::SWSERIAL_8N1,10,9); //RX  TX
+    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
+
+    while (!Serial_in)
+    {
+        ; // wait for serial port ready
+    }
+
+
+    Serial.printf("\nSerial_in setup OK\n");
+
+
+
+  //Init BLE Serial
+  SerialBT.begin(ap_name,true,13);
+  SerialBT.setTimeout(10);
+    while (!SerialBT.connected())
+    {
+        ; // wait for serial port ready
+    }
+
+     Serial.printf("\nSerial_BT setup OK\n");
+
+
 
 Serial.printf("\nStart Task...\n");
     /*---------- Task Definition ---------------------*/
@@ -321,7 +321,7 @@ Serial.printf("\nStart Task...\n");
 
 
     // init websocket
-    Serial.println("WebSocket started!");
+    //Serial.println("WebSocket started!");
     // attach AsyncWebSocket
     //ws.onEvent(onEvent);
     //server.addHandler(&ws);

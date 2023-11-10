@@ -15,7 +15,7 @@
 #define TX 17
 #define RX 16
 
-
+/*
 // 网页设置的参数
  typedef struct eeprom_settings 
 {
@@ -25,7 +25,7 @@
 } user_wifi_t;
 
 extern user_wifi_t  user_wifi ;
-
+*/
 
 //定义artisan 交互的数组
 typedef struct  data_to_artisan {
@@ -43,7 +43,6 @@ typedef struct  data_to_artisan {
  } data_to_artisan_t ;
  extern data_to_artisan_t To_artisan;
 //end of 定义artisan 交互的数组
-
 
 
 
