@@ -36,7 +36,7 @@ uint8_t macAddr[6];
 String local_IP;
 String MsgString;
 
-const int BUFFER_SIZE = 8192;
+const int BUFFER_SIZE = 1024;
 
 BleSerial SerialBT;
 
@@ -50,7 +50,7 @@ user_wifi_t user_wifi = {" ", " ", false};
 data_to_artisan_t To_artisan = {1.0,2.0,3.0,4.0};
 
 
-TaskHandle_t xHandle_indicator;
+//TaskHandle_t xHandle_indicator;
 
 void notFound(AsyncWebServerRequest *request);    
 void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len);//Handle WebSocket event
@@ -181,17 +181,19 @@ void TASK_ReadSerial(void *pvParameters) {
     if (Serial_in.available()) {
       auto count = Serial.readBytes(serialReadBuffer, BUFFER_SIZE);
       SerialBT.write(serialReadBuffer, count);
+        Serial.write(serialReadBuffer, count);
     }
     delay(20);
   }
 }
 
 //Task for reading BLE Serial
-void TASK_ReadBtTask(void *epvParameters {
+void TASK_ReadBtTask(void *epvParameters) {
   while (true) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
       Serial_in.write(bleReadBuffer, count);
+     Serial.write(serialReadBuffer, count);
     }
     delay(20);
   }
@@ -251,6 +253,17 @@ void setup() {
     EEPROM.begin(sizeof(user_wifi));
     EEPROM.get(0, user_wifi);
 
+
+  //Disable watchdog timers
+  disableCore0WDT();
+  disableCore1WDT();
+  disableLoopWDT();
+  esp_task_wdt_delete(NULL);
+  rtc_wdt_protect_off();
+  rtc_wdt_disable();
+
+
+
  //user_wifi.Init_mode = true ;
 
 if (user_wifi.Init_mode) 
@@ -262,7 +275,7 @@ if (user_wifi.Init_mode)
     EEPROM.commit();
 }
 
-    Serial.print("HB_WIFI's IP:");
+    Serial.print("TC_WIFI's IP:");
 
     if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
     {
@@ -353,7 +366,7 @@ Serial.printf("\nStart Task...\n");
                         request->send(response);
                         },[](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){
                         if(!index){
-                        vTaskSuspend(xHandle_indicator); //停止显示
+                        //vTaskSuspend(xHandle_indicator); //停止显示
                         Serial.printf("Update Start: %s\n", filename.c_str());
 
                         if(!Update.begin((ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000)){
@@ -390,6 +403,5 @@ Serial.printf("\nStart Task...\n");
 }
 
 void loop() {
-
-
+  vTaskDelete(NULL);
 }
