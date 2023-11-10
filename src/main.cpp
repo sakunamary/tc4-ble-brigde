@@ -28,7 +28,7 @@ SemaphoreHandle_t xThermoDataMutex = NULL;
 
 AsyncWebServer server(80);
 
-AsyncWebSocket ws("/websocket"); // access at ws://[esp ip]/
+//AsyncWebSocket ws("/websocket"); // access at ws://[esp ip]/
 
 char ap_name[30] ;
 uint8_t macAddr[6];
@@ -46,14 +46,14 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 
 
 
-user_wifi_t user_wifi = {" ", " ", false};
-data_to_artisan_t To_artisan = {1.0,2.0,3.0,4.0};
+//user_wifi_t user_wifi = {" ", " ", false};
+//data_to_artisan_t To_artisan = {1.0,2.0,3.0,4.0};
 
 
 //TaskHandle_t xHandle_indicator;
 
 void notFound(AsyncWebServerRequest *request);    
-void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len);//Handle WebSocket event
+//void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len);//Handle WebSocket event
 void onUpload(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final){}
 String IpAddressToString(const IPAddress &ipAddress);      
 
@@ -79,7 +79,7 @@ String processor(const String &var)
     
     return String();
 }
-
+/*
 void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
 
      //    {"command": "getData", "id": 93609, "roasterID": 0}
@@ -166,7 +166,7 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
     }
 }
 
-
+*/
 
 void notFound(AsyncWebServerRequest *request)
 {
@@ -193,7 +193,7 @@ void TASK_ReadBtTask(void *epvParameters) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
       Serial_in.write(bleReadBuffer, count);
-     Serial.write(serialReadBuffer, count);
+     Serial.write(bleReadBuffer, count);
     }
     delay(20);
   }
@@ -205,11 +205,18 @@ void setup() {
 
     xThermoDataMutex = xSemaphoreCreateMutex();
 
+  //Disable watchdog timers
+  disableCore0WDT();
+  disableCore1WDT();
+  disableLoopWDT();
+  esp_task_wdt_delete(NULL);
+  rtc_wdt_protect_off();
+  rtc_wdt_disable();
 
-  //Init BLE Serial
-  SerialBT.begin(ap_name);
-  SerialBT.setTimeout(10);
 
+    Serial.begin(BAUDRATE);
+    //Serial_in.begin(BAUDRATE,EspSoftwareSerial::SWSERIAL_8N1,10,9); //RX  TX
+    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
   //初始化网络服务
     WiFi.mode(WIFI_STA);
@@ -235,11 +242,9 @@ void setup() {
     }
 
 
-    Serial.begin(BAUDRATE);
-    //Serial_in.begin(BAUDRATE,EspSoftwareSerial::SWSERIAL_8N1,10,9); //RX  TX
-    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
-
-
+  //Init BLE Serial
+  SerialBT.begin(ap_name);
+  SerialBT.setTimeout(10);
 
     while (!Serial)
     {
@@ -253,14 +258,6 @@ void setup() {
     EEPROM.begin(sizeof(user_wifi));
     EEPROM.get(0, user_wifi);
 
-
-  //Disable watchdog timers
-  disableCore0WDT();
-  disableCore1WDT();
-  disableLoopWDT();
-  esp_task_wdt_delete(NULL);
-  rtc_wdt_protect_off();
-  rtc_wdt_disable();
 
 
 
@@ -326,8 +323,8 @@ Serial.printf("\nStart Task...\n");
     // init websocket
     Serial.println("WebSocket started!");
     // attach AsyncWebSocket
-    ws.onEvent(onEvent);
-    server.addHandler(&ws);
+    //ws.onEvent(onEvent);
+    //server.addHandler(&ws);
 
 
 
@@ -336,17 +333,17 @@ Serial.printf("\nStart Task...\n");
                   { request->send_P(200, "text/html", index_html, processor); });
 
     // get the value from index.html
-    server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
+   // server.on("/get", HTTP_GET, [](AsyncWebServerRequest *request)
                   {
 //get value form webpage      
-    strncpy(user_wifi.ssid,request->getParam("ssid")->value().c_str(), sizeof(user_wifi.ssid) );
-    strncpy(user_wifi.password,request->getParam("password")->value().c_str(), sizeof(user_wifi.password) );
-    user_wifi.ssid[request->getParam("ssid")->value().length()] = user_wifi.password[request->getParam("password")->value().length()] = '\0';  
+   // strncpy(user_wifi.ssid,request->getParam("ssid")->value().c_str(), sizeof(user_wifi.ssid) );
+   // strncpy(user_wifi.password,request->getParam("password")->value().c_str(), sizeof(user_wifi.password) );
+   // user_wifi.ssid[request->getParam("ssid")->value().length()] = user_wifi.password[request->getParam("password")->value().length()] = '\0';  
 //Svae EEPROM 
-    EEPROM.put(0, user_wifi);
-    EEPROM.commit();
+    //EEPROM.put(0, user_wifi);
+   // EEPROM.commit();
 //output wifi_sussce html;
-    request->send_P(200, "text/html", wifi_sussce_html); });
+   // request->send_P(200, "text/html", wifi_sussce_html); });
 
 
   // upload a file to /upload
@@ -397,11 +394,15 @@ Serial.printf("\nStart Task...\n");
     server.onNotFound(notFound); // 404 page seems not necessary...
     server.onFileUpload(onUpload);
 
-  server.begin();
-  Serial.println("HTTP server started");
+    server.begin();
+    Serial.println("HTTP server started");
+
+
+                  }
+
 
 }
 
 void loop() {
-  vTaskDelete(NULL);
+  //vTaskDelete(NULL);
 }
