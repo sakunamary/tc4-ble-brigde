@@ -6,6 +6,11 @@
 #include <AsyncUDP.h>
 #include <ESPAsyncWebServer.h>
 #include "Update.h"
+#include <BleSerial.h>
+#include <esp_attr.h>
+#include <esp_task_wdt.h>
+#include <driver/rtc_io.h>
+#include "soc/rtc_wdt.h"
 
 
 #include <HardwareSerial.h>
@@ -31,8 +36,14 @@ uint8_t macAddr[6];
 String local_IP;
 String MsgString;
 
-String MSG_token1300[4];
-String MSG_token2400[4];
+const int BUFFER_SIZE = 8192;
+
+BleSerial SerialBT;
+
+
+uint8_t bleReadBuffer[BUFFER_SIZE];
+uint8_t serialReadBuffer[BUFFER_SIZE];
+
 
 
 user_wifi_t user_wifi = {" ", " ", false};
@@ -164,99 +175,27 @@ void notFound(AsyncWebServerRequest *request)
 
 
 
-void task_get_data(void *pvParameters)
-{ //function 
-
-    /* Variable Definition */
-    (void)pvParameters;
-    TickType_t xLastWakeTime;
-
-    const TickType_t xIntervel = 1000/ portTICK_PERIOD_MS;
-
-
-   //const TickType_t xIntervel = (2 * 1000) / portTICK_PERIOD_MS;
-    /* Task Setup and Initialize */
-    // Initial the xLastWakeTime variable with the current time.
-    xLastWakeTime = xTaskGetTickCount();
-    int i = 0;
-    for (;;) // A Task shall never return or exit.
-    { //for loop
-        // Wait for the next cycle (intervel 750ms).
-
-         StringTokenizer tokens(MsgString, ",");
-        //获取数据
-            Serial_in.print("CHAN;1300\n");
-            delay(20);
-            Serial_in.flush();
-
-            Serial_in.print("READ\n");
-            delay(20);
-            if(Serial_in.available()>0){
-                MsgString = Serial_in.readStringUntil('C');
-                MsgString.concat('C');
-            } 
-/*
-            Serial.println("read from drummer:");
-            Serial.println(MsgString);
-*/
-
-
-            while(tokens.hasNext()){
-                   MSG_token1300[i]=tokens.nextToken(); // prints the next token in the string
-                  // Serial.println(MSG_token[i]);
-                   i++;
-                }
-            if (xSemaphoreTake(xThermoDataMutex, xIntervel) == pdPASS)  //给温度数组的最后一个数值写入数据
-
-                {//lock the  mutex    
-                    To_artisan.BT = MSG_token1300[1].toFloat();
-                    To_artisan.ET = MSG_token1300[2].toFloat();
-
-                        xSemaphoreGive(xThermoDataMutex);  //end of lock mutex
-                }   
-                
-            MsgString = "";
-            i=0;
-
-            Serial_in.print("CHAN;2400\n");
-            delay(20);
-            Serial_in.flush();
-
-            Serial_in.print("READ\n");
-            delay(20);
-            if(Serial_in.available()>0){
-                MsgString = Serial_in.readStringUntil('C');
-                MsgString.concat('C');
-            }   
-
-
-            while(tokens.hasNext()){
-                   MSG_token2400[i]=tokens.nextToken(); // prints the next token in the string
-                  // Serial.println(MSG_token[i]);
-                   i++;
-                }
-            if (xSemaphoreTake(xThermoDataMutex, xIntervel) == pdPASS)  //给温度数组的最后一个数值写入数据
-                {//lock the  mutex       
-                    To_artisan.inlet = MSG_token2400[1].toFloat() ;
-
-
-                        xSemaphoreGive(xThermoDataMutex);  //end of lock mutex
-                }   
-                
-            MsgString = "";
-            i=0;   
-
-
-
-
-
-                vTaskDelayUntil(&xLastWakeTime, xIntervel);
-
+//Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，并写入数组
+void TASK_ReadSerial(void *pvParameters) {
+  while (true) {
+    if (Serial_in.available()) {
+      auto count = Serial.readBytes(serialReadBuffer, BUFFER_SIZE);
+      SerialBT.write(serialReadBuffer, count);
     }
-}//function 
+    delay(20);
+  }
+}
 
-
-
+//Task for reading BLE Serial
+void TASK_ReadBtTask(void *epvParameters {
+  while (true) {
+    if (SerialBT.available()) {
+      auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+      Serial_in.write(bleReadBuffer, count);
+    }
+    delay(20);
+  }
+}
 
 
 
@@ -264,6 +203,10 @@ void setup() {
 
     xThermoDataMutex = xSemaphoreCreateMutex();
 
+
+  //Init BLE Serial
+  SerialBT.begin(ap_name);
+  SerialBT.setTimeout(10);
 
 
   //初始化网络服务
@@ -336,7 +279,7 @@ Serial.printf("\nStart Task...\n");
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        task_get_data, "get_data" // 测量电池电源数据，每分钟测量一次
+        TASK_ReadSerial, "ReadSerial" // 测量电池电源数据，每分钟测量一次
         ,
         1024 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -344,11 +287,25 @@ Serial.printf("\nStart Task...\n");
         ,
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
-    Serial.printf("\nTASK1:get_data...\n");
 
 
 
+    Serial.printf("\nTASK1:ReadSerial...\n");
 
+    // Setup tasks to run independently.
+    xTaskCreatePinnedToCore(
+        TASK_ReadBtTask, "ReadBtTask" // 测量电池电源数据，每分钟测量一次
+        ,
+        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+    );
+
+
+
+    Serial.printf("\nTASK=2:ReadBtTask...\n");
 
 
 
