@@ -1,16 +1,11 @@
 #include <Arduino.h>
 #include "config.h"
 #include "EEPROM.h"
-  #include <WiFi.h>
-  #include <AsyncTCP.h>
-
-#include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
 #include <BleSerial.h>
 #include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
-#include "soc/rtc_wdt.h"
+//#include "soc/rtc_wdt.h"
 
 
 #include <HardwareSerial.h>
@@ -20,14 +15,17 @@
 
 #include "ArduinoJson.h"
 
-
+  #include <WiFi.h>
+  #include <WiFiClient.h>
+  #include <WebServer.h>
+#include <ElegantOTA.h>
 
 //SoftwareSerial Serial_in ;
 //spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer 
  HardwareSerial Serial_in(2);
 SemaphoreHandle_t xThermoDataMutex = NULL;
 
-AsyncWebServer server(80);
+  WebServer server(80);
 
 //AsyncWebSocket ws("/websocket"); // access at ws://[esp ip]/
 
@@ -105,6 +103,31 @@ void TASK_ReadBtTask(void *epvParameters) {
 }
 
 
+unsigned long ota_progress_millis = 0;
+
+void onOTAStart() {
+  // Log when OTA has started
+  Serial.println("OTA update started!");
+  // <Add your own code here>
+}
+
+void onOTAProgress(size_t current, size_t final) {
+  // Log every 1 second
+  if (millis() - ota_progress_millis > 1000) {
+    ota_progress_millis = millis();
+    Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+  }
+}
+
+void onOTAEnd(bool success) {
+  // Log when OTA has finished
+  if (success) {
+    Serial.println("OTA update finished successfully!");
+  } else {
+    Serial.println("There was an error during OTA update!");
+  }
+  // <Add your own code here>
+}
 
 void setup() {
 
@@ -112,11 +135,11 @@ void setup() {
 
   //Disable watchdog timers
   disableCore0WDT();
-  disableCore1WDT();
+  //disableCore1WDT();
   disableLoopWDT();
   esp_task_wdt_delete(NULL);
-  rtc_wdt_protect_off();
-  rtc_wdt_disable();
+  //rtc_wdt_protect_off();
+ //rtc_wdt_disable();
 
 
     Serial.begin(BAUDRATE);
@@ -202,19 +225,25 @@ Serial.printf("\nStart Task...\n");
 
     Serial.printf("\nTASK=2:ReadBtTask...\n");
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "Hi! This is a sample response.");
+
+  server.on("/", []() {
+    server.send(200, "text/plain", "Hi! This is ElegantOTA Demo.");
   });
 
-  AsyncElegantOTA.begin(&server);    // Start AsyncElegantOTA
+  ElegantOTA.begin(&server);    // Start ElegantOTA
+  // ElegantOTA callbacks
+  ElegantOTA.onStart(onOTAStart);
+  ElegantOTA.onProgress(onOTAProgress);
+  ElegantOTA.onEnd(onOTAEnd);
+
   server.begin();
-  Serial.println("HTTP server started");
-
-
+  Serial.println("HTTP OTA server started");
 
 
 }
 
 void loop() {
   //vTaskDelete(NULL);
+ server.handleClient();
+  ElegantOTA.loop();
 }
