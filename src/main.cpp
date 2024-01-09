@@ -150,6 +150,4 @@ Serial.printf("\nStart Task...\n");
 
 void loop() {
 
-
-
 }
