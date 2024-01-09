@@ -15,8 +15,6 @@
 #include <ESPAsyncWebServer.h>
 #include <AsyncElegantOTA.h>
 
-
-SoftwareSerial Serial_in ;
 //spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer 
 HardwareSerial Serial_in(2);
 SemaphoreHandle_t xThermoDataMutex = NULL;
@@ -73,8 +71,8 @@ void setup() {
   disableCore1WDT();
   disableLoopWDT();
   esp_task_wdt_delete(NULL);
-  rtc_wdt_protect_off();
- rtc_wdt_disable();
+  //rtc_wdt_protect_off();
+  //rtc_wdt_disable();
 
 
     Serial.begin(BAUDRATE);
