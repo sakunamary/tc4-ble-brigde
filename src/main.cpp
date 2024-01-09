@@ -7,7 +7,7 @@
 #include <driver/rtc_io.h>
 
 
-//#include <HardwareSerial.h>
+#include <HardwareSerial.h>
 
 
 #include <WiFi.h>
@@ -16,9 +16,9 @@
 #include <AsyncElegantOTA.h>
 
 
-//SoftwareSerial Serial_in ;
+SoftwareSerial Serial_in ;
 //spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer 
- //HardwareSerial Serial_in(2);
+HardwareSerial Serial_in(2);
 SemaphoreHandle_t xThermoDataMutex = NULL;
 
 AsyncWebServer server(80);
@@ -45,9 +45,8 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 void TASK_ReadSerial(void *pvParameters) {
   while (true) {
     if (Serial.available()) {
-      auto count = Serial.readBytes(serialReadBuffer, BUFFER_SIZE);
+      auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
       SerialBT.write(serialReadBuffer, count);
-        //Serial.write(serialReadBuffer, count);
     }
     delay(20);
   }
@@ -58,8 +57,7 @@ void TASK_ReadBtTask(void *epvParameters) {
   while (true) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-      Serial.write(bleReadBuffer, count);
-     //Serial.write(bleReadBuffer, count);
+      Serial_in.write(bleReadBuffer, count);  
     }
     delay(20);
   }
@@ -72,14 +70,16 @@ void setup() {
 
   //Disable watchdog timers
   disableCore0WDT();
-  //disableCore1WDT();
+  disableCore1WDT();
   disableLoopWDT();
   esp_task_wdt_delete(NULL);
-  //rtc_wdt_protect_off();
- //rtc_wdt_disable();
+  rtc_wdt_protect_off();
+ rtc_wdt_disable();
 
 
     Serial.begin(BAUDRATE);
+
+    Serial_in.begin(BAUDRATE);
 #if defined(DEBUG_MODE)
     Serial.printf("\nWIFI  STARTING...\n");
 #endif  
