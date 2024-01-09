@@ -78,8 +78,8 @@ void setup() {
 
 
     Serial.begin(BAUDRATE);
+    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
-    Serial_in.begin(BAUDRATE);
 #if defined(DEBUG_MODE)
     Serial.printf("\nWIFI  STARTING...\n");
 #endif  
