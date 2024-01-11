@@ -89,16 +89,6 @@ void setup() {
             sprintf( ap_name ,"TC4_WIFI_%02X%02X%02X",macAddr[0],macAddr[1],macAddr[2]);
             WiFi.softAP(ap_name, "12345678"); // defualt IP address :192.168.4.1 password min 8 digis
 
-  //Init BLE Serial
-  SerialBT.begin(ap_name);
-  SerialBT.setTimeout(10);
-    while (!SerialBT.connected())
-    {
-        ; // wait for serial port ready
-    }
-#if defined(DEBUG_MODE)
-     Serial.printf("\nSerial_BT setup OK\n");
-#endif
 
 
 Serial.printf("\nStart Task...\n");
@@ -144,6 +134,17 @@ Serial.printf("\nStart Task...\n");
 
 #if defined(DEBUG_MODE)
     Serial.println("HTTP server started");
+#endif
+
+  //Init BLE Serial
+  SerialBT.begin(ap_name);
+  SerialBT.setTimeout(10);
+    while (!SerialBT.connected())
+    {
+        ; // wait for serial port ready
+    }
+#if defined(DEBUG_MODE)
+     Serial.printf("\nSerial_BT setup OK\n");
 #endif
 
 }
