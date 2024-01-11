@@ -21,6 +21,10 @@ SemaphoreHandle_t xThermoDataMutex = NULL;
 
 AsyncWebServer server(80);
 
+String IpAddressToString(const IPAddress &ipAddress);                         //转换IP地址格式
+String processor(const String &var); // webpage function
+
+
 
 char ap_name[30] ;
 uint8_t macAddr[6];
@@ -59,6 +63,24 @@ void TASK_ReadBtTask(void *epvParameters) {
     }
     delay(20);
   }
+}
+
+String IpAddressToString(const IPAddress &ipAddress)
+{
+    return String(ipAddress[0]) + String(".") +
+           String(ipAddress[1]) + String(".") +
+           String(ipAddress[2]) + String(".") +
+           String(ipAddress[3]);
+}
+
+String processor(const String &var)
+{
+if (var == "version")
+    {
+        return VERSION;
+    }
+
+    return String();
 }
 
 
@@ -127,9 +149,9 @@ Serial.printf("\nStart Task...\n");
     Serial.printf("\nTASK=2:ReadBtTask...\n");
 #endif
 
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", index_html);
-  });
+    // for index.html
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+                  { request->send_P(200, "text/html", index_html, processor); });
 
   AsyncElegantOTA.begin(&server);    // Start AsyncElegantOTA
   server.begin();
@@ -141,10 +163,6 @@ Serial.printf("\nStart Task...\n");
   //Init BLE Serial
   SerialBT.begin(ap_name,true,2);
   SerialBT.setTimeout(10);
-    while (!SerialBT.connected())
-    {
-        ; // wait for serial port ready
-    }
 #if defined(DEBUG_MODE)
      Serial.printf("\nSerial_BT setup OK\n");
 #endif

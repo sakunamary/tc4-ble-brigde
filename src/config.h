@@ -62,11 +62,12 @@ const char index_html[] PROGMEM = R"rawliteral(
             <form action='/get' method='get'>
                 <h1 class=''>通讯模块固件升级 </h1>
                 <div align="center">
-                <a  href='/update' target='_blank'>PUSH HERE TO UPDATE</a>
+                <a href='/update' target='_blank'>FIRMWARE UPDATE verison:%version%</a>
                 </div>
             </form>             
         </main> 
-    </body></html>
+    </body>
+</html>
 )rawliteral";
 
 #endif
