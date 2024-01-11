@@ -91,7 +91,9 @@ void setup() {
 
 
 
+#if defined(DEBUG_MODE)
 Serial.printf("\nStart Task...\n");
+#endif
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
@@ -126,7 +128,7 @@ Serial.printf("\nStart Task...\n");
 #endif
 
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    request->send(200, "text/plain", "Hi! This is a sample response.");
+    request->send(200, "text/plain", index_html);
   });
 
   AsyncElegantOTA.begin(&server);    // Start AsyncElegantOTA
@@ -137,7 +139,7 @@ Serial.printf("\nStart Task...\n");
 #endif
 
   //Init BLE Serial
-  SerialBT.begin(ap_name);
+  SerialBT.begin(ap_name,true,2);
   SerialBT.setTimeout(10);
     while (!SerialBT.connected())
     {
