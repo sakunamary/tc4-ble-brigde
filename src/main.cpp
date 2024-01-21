@@ -46,9 +46,12 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 //Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，并写入数组
 void TASK_ReadSerial(void *pvParameters) {
   while (true) {
-    if (Serial.available()) {
+    if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
       SerialBT.write(serialReadBuffer, count);
+#if defined(DEBUG_MODE)      
+      Serial.write(serialReadBuffer, count);
+#endif
     }
     delay(20);
   }
@@ -60,6 +63,10 @@ void TASK_ReadBtTask(void *epvParameters) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
       Serial_in.write(bleReadBuffer, count);  
+
+#if defined(DEBUG_MODE)       
+                  Serial.write(bleReadBuffer, count); 
+#endif                 
     }
     delay(20);
   }
@@ -170,5 +177,6 @@ Serial.printf("\nStart Task...\n");
 }
 
 void loop() {
-
+Serial_in.print("READ;\n");
+delay(1000);
 }

@@ -8,10 +8,10 @@
 #define uS_TO_S_FACTOR 1000000  /* Conversion factor for micro seconds to seconds */
 #define BAUDRATE 115200  //serial port baudrate
 
-#define VERSION "1.0.2"
+#define VERSION "1.0.4"
 
 
-//#define DEBUG_MODE
+#define DEBUG_MODE
 #define TX 17
 #define RX 16
 
@@ -27,7 +27,7 @@ const char index_html[] PROGMEM = R"rawliteral(
       }
     </script>
         <meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'>
-        <title>TC4-WB 设置</title>
+        <title>MATCH BOX 设置</title>
         <style>*,::after,::before{box-sizing:border-box;}
         body{margin:0;font-family:'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans','Liberation Sans';
         font-size:1rem;
