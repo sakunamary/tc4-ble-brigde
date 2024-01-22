@@ -72,6 +72,23 @@ void TASK_ReadBtTask(void *epvParameters) {
   }
 }
 
+
+
+//Task for reading BLE Serial
+void TASK_SendRead(void *epvParameters) {
+  while (true) {
+    if (SerialBT.available()) {
+      auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+      Serial_in.write(bleReadBuffer, count);  
+
+#if defined(DEBUG_MODE)       
+        Serial.write(bleReadBuffer, count); 
+#endif                 
+    }
+    delay(20);
+  }
+}
+
 String IpAddressToString(const IPAddress &ipAddress)
 {
     return String(ipAddress[0]) + String(".") +
@@ -155,6 +172,31 @@ Serial.printf("\nStart Task...\n");
 #if defined(DEBUG_MODE)
     Serial.printf("\nTASK=2:ReadBtTask...\n");
 #endif
+
+
+
+#if defined(DEBUG_MODE)
+    Serial.printf("\nTASK1:ReadSerial...\n");
+#endif
+
+    // Setup tasks to run independently.
+    xTaskCreatePinnedToCore(
+        TASK_ReadBtTask, "ReadBtTask" // 测量电池电源数据，每分钟测量一次
+        ,
+        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+    );
+
+
+#if defined(DEBUG_MODE)
+    Serial.printf("\nTASK=2:ReadBtTask...\n");
+#endif
+
+
+
 
     // for index.html
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
