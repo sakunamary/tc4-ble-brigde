@@ -32,7 +32,7 @@ uint8_t macAddr[6];
 String local_IP;
 String MsgString;
 
-const int BUFFER_SIZE = 1024;
+const int BUFFER_SIZE = 512;
 
 BleSerial SerialBT;
 
@@ -49,9 +49,6 @@ void TASK_ReadSerial(void *pvParameters) {
     if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
       SerialBT.write(serialReadBuffer, count);
-#if defined(DEBUG_MODE)      
-      Serial.write(serialReadBuffer, count);
-#endif
     }
     delay(20);
   }
@@ -103,7 +100,6 @@ void setup() {
   //rtc_wdt_protect_off();
   //rtc_wdt_disable();
 
-
     Serial.begin(BAUDRATE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
@@ -128,7 +124,7 @@ Serial.printf("\nStart Task...\n");
     xTaskCreatePinnedToCore(
         TASK_ReadSerial, "ReadSerial" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
+        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -177,6 +173,5 @@ Serial.printf("\nStart Task...\n");
 }
 
 void loop() {
-Serial_in.print("READ;\n");
-delay(1000);
+
 }
