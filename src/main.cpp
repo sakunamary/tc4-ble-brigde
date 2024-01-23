@@ -32,8 +32,8 @@ String local_IP;
 String TC4_String;
 String CmdString;
 
-QueueHandle_t queueCMD = xQueueCreate(8, sizeof(CmdString));
-QueueHandle_t queueTC4 = xQueueCreate(8, sizeof(TC4_String));
+QueueHandle_t queueCMD = xQueueCreate(5, sizeof(CmdString));
+QueueHandle_t queueTC4 = xQueueCreate(10, sizeof(TC4_String));
 
 
 //Modbus Registers Offsets
@@ -47,7 +47,7 @@ const uint16_t SV_HREG = 3005;
 
 char ap_name[30] ;
 uint8_t macAddr[6];
-
+double Data[6];//温度数据
 
 
 const int BUFFER_SIZE = 512;
@@ -94,6 +94,7 @@ void TASK_ModbusSendTask(void *pvParameters) {
     (void)pvParameters;
    //const  TickType_t xLastWakeTime;
     const TickType_t timeOut = 2000;
+    int i = 0;
     //const TickType_t xIntervel = 1000/ portTICK_PERIOD_MS;
     /* Task Setup and Initialize */
     // Initial the xLastWakeTime variable with the current time.
@@ -106,7 +107,14 @@ void TASK_ModbusSendTask(void *pvParameters) {
 
         if (xQueueReceive(queueTC4, &TC4_String, timeOut) == pdPASS) {
         Serial.println(TC4_String); 
+        /*
+          StringTokenizer TC4_Data(TC4_String, ",");
+            while(TC4_Data.hasNext()){
+                    Data[i]=TC4_Data.nextToken(); // prints the next token in the string
+                    i++;
+                }
 
+*/
         }     
     }
 }
@@ -196,7 +204,7 @@ void setup() {
     xTaskCreatePinnedToCore(
         TASK_ReadBtTask, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
+        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
