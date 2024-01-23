@@ -32,7 +32,7 @@ uint8_t macAddr[6];
 String local_IP;
 String MsgString;
 
-const int BUFFER_SIZE = 1024;
+const int BUFFER_SIZE = 512;
 
 BleSerial SerialBT;
 
@@ -49,9 +49,6 @@ void TASK_ReadSerial(void *pvParameters) {
     if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
       SerialBT.write(serialReadBuffer, count);
-#if defined(DEBUG_MODE)      
-      Serial.write(serialReadBuffer, count);
-#endif
     }
     delay(20);
   }
@@ -62,11 +59,7 @@ void TASK_ReadBtTask(void *epvParameters) {
   while (true) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-      Serial_in.write(bleReadBuffer, count);  
-
-#if defined(DEBUG_MODE)       
-                  Serial.write(bleReadBuffer, count); 
-#endif                 
+      Serial_in.write(bleReadBuffer, count);                 
     }
     delay(20);
   }
