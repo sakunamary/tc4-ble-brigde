@@ -68,9 +68,10 @@ void TASK_ReadSerial(void *pvParameters) {
     if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
       SerialBT.write(serialReadBuffer, count);
-      TC4_String =String((char *)serialReadBuffer);    
+      TC4_String =String((char *)serialReadBuffer);  
+      xQueueSend(queueTC4, &TC4_String, timeOut) ; 
     }
-    xQueueSend(queueTC4, &TC4_String, timeOut) ;
+
     delay(20);
   }
 }
@@ -213,7 +214,7 @@ void setup() {
 
 
 #if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=3:ModbusSendTask...\n");
+    Serial.printf("\nTASK=3:ModbusSendTask OK \n");
 #endif
 
 
