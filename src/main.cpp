@@ -103,12 +103,15 @@ void TASK_ModbusSendTask(void *pvParameters) {
         if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS) {
 
             TC4_data_String = String((char *)serialReadBuffer);  
-            Serial.println(TC4_data_String); 
+            Serial.print(TC4_data_String); 
+            Serial.println();
         /*
           StringTokenizer TC4_Data(TC4_String, ",");
             while(TC4_Data.hasNext()){
                     Data[i]=TC4_Data.nextToken(); // prints the next token in the string
                     i++;
+
+                    Data[1],Data[2]
                 }
 */
 
