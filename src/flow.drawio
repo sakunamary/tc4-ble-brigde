@@ -1,22 +1,22 @@
 <mxfile host="65bd71144e">
     <diagram id="djuoKwj-kMu_pSdnhJvP" name="第 1 页">
-        <mxGraphModel dx="1290" dy="2246" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="1254" dy="2246" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
                 <mxCell id="2" value="TC4" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="160" y="170" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="160" y="249" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="3" value="ESP32&lt;br&gt;BLE brigde" style="whiteSpace=wrap;html=1;rounded=1;" parent="1" vertex="1">
-                    <mxGeometry x="390" y="170" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="390" y="249" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="4" value="小程序" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="630" y="170" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="630" y="249" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="6" value="" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;dashed=1;dashPattern=8 8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fillColor=#60a917;strokeColor=#2D7600;" parent="1" source="2" edge="1">
                     <mxGeometry width="100" height="100" relative="1" as="geometry">
-                        <mxPoint x="290" y="300" as="sourcePoint"/>
-                        <mxPoint x="390" y="200" as="targetPoint"/>
+                        <mxPoint x="290" y="379" as="sourcePoint"/>
+                        <mxPoint x="390" y="279" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="57" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;Serial&lt;/font&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=20;" parent="6" vertex="1" connectable="0">
@@ -26,20 +26,20 @@
                 </mxCell>
                 <mxCell id="7" value="&lt;font style=&quot;font-size: 16px;&quot;&gt;BLE&lt;/font&gt;" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;dashed=1;dashPattern=8 8;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fillColor=#0050ef;strokeColor=#001DBC;" parent="1" source="3" edge="1">
                     <mxGeometry width="100" height="100" relative="1" as="geometry">
-                        <mxPoint x="530" y="300" as="sourcePoint"/>
-                        <mxPoint x="630" y="200" as="targetPoint"/>
+                        <mxPoint x="530" y="379" as="sourcePoint"/>
+                        <mxPoint x="630" y="279" as="targetPoint"/>
                         <Array as="points"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="8" value="artisan" style="rounded=1;whiteSpace=wrap;html=1;" parent="1" vertex="1">
-                    <mxGeometry x="630" y="350" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="630" y="429" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="9" value="" style="shape=flexArrow;endArrow=classic;startArrow=classic;html=1;dashed=1;dashPattern=8 8;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fillColor=#d80073;strokeColor=#A50040;" parent="1" source="8" target="3" edge="1">
                     <mxGeometry width="100" height="100" relative="1" as="geometry">
-                        <mxPoint x="300" y="470" as="sourcePoint"/>
-                        <mxPoint x="400" y="370" as="targetPoint"/>
+                        <mxPoint x="300" y="549" as="sourcePoint"/>
+                        <mxPoint x="400" y="449" as="targetPoint"/>
                         <Array as="points">
-                            <mxPoint x="450" y="380"/>
+                            <mxPoint x="450" y="459"/>
                         </Array>
                     </mxGeometry>
                 </mxCell>
@@ -215,6 +215,88 @@
                 </mxCell>
                 <mxCell id="60" value="&lt;font style=&quot;font-size: 13px;&quot;&gt;5.ESP32_BLE 存TF卡，网页曲线交互&lt;/font&gt;" style="whiteSpace=wrap;html=1;fontSize=16;rounded=1;" parent="1" vertex="1">
                     <mxGeometry x="960" y="-100" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="67" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;fontSize=15;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="62" target="66">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="860" y="1774" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="84" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;span style=&quot;color: #ce9178;&quot;&gt;ReadSerial&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=15;" vertex="1" connectable="0" parent="67">
+                    <mxGeometry x="0.0833" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="74" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;fontSize=15;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="62" target="75">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="830" y="1925" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="710" y="1925"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="83" value="&lt;span style=&quot;font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; color: rgb(206, 145, 120);&quot;&gt;ModbusSendTask&lt;/span&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=15;" vertex="1" connectable="0" parent="74">
+                    <mxGeometry x="-0.218" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="62" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Queue_TC4&lt;/font&gt;" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="660" y="1759" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="65" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="64" target="62">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="64" value="&lt;meta charset=&quot;utf-8&quot;&gt;&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-weight: normal; font-size: 14px; line-height: 21px;&quot;&gt;&lt;div&gt;&lt;span style=&quot;color: #cccccc;&quot;&gt;serialReadBuffer&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="390" y="1754" width="140" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="66" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-weight: normal; font-size: 14px; line-height: 21px;&quot;&gt;&lt;div&gt;&lt;span style=&quot;color: #cccccc;&quot;&gt;SerialBT&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="970" y="1759" width="80" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="72" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;span style=&quot;color: #ce9178;&quot;&gt;ReadBtTask&lt;/span&gt;&lt;/div&gt;" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="1" source="68" target="71">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="68" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;Queue_CMD&lt;br&gt;&lt;/font&gt;" style="text;strokeColor=none;align=center;fillColor=none;html=1;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+                    <mxGeometry x="650" y="1690" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="70" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=15;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="69" target="68">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="865" y="1705" as="sourcePoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="69" value="&lt;meta charset=&quot;utf-8&quot;&gt;&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-weight: normal; font-size: 14px; line-height: 21px;&quot;&gt;&lt;div&gt;&lt;span style=&quot;color: #cccccc;&quot;&gt;serialReadBuffer&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="text;whiteSpace=wrap;html=1;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="890" y="1685" width="150" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="71" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-weight: normal; font-size: 14px; line-height: 21px;&quot;&gt;&lt;div&gt;&lt;span style=&quot;color: #cccccc;&quot;&gt;Serial_in&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="374" y="1690" width="80" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="77" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="1" source="75" target="76">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="75" value="&lt;meta charset=&quot;utf-8&quot;&gt;&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-weight: normal; font-size: 14px; line-height: 21px;&quot;&gt;&lt;div&gt;&lt;span style=&quot;color: #cccccc;&quot;&gt;serialReadBuffer&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;" style="text;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="840" y="1905" width="140" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="80" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=15;" edge="1" parent="1" source="76" target="78">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="76" value="转换为String" style="whiteSpace=wrap;html=1;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="1030" y="1895" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="82" value="" style="edgeStyle=none;html=1;fontSize=15;" edge="1" parent="1" source="78" target="81">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="78" value="Tokenizer" style="whiteSpace=wrap;html=1;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="1030" y="2015" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="79" value="" style="endArrow=none;html=1;" edge="1" parent="1">
+                    <mxGeometry width="50" height="50" relative="1" as="geometry">
+                        <mxPoint x="190" y="1560" as="sourcePoint"/>
+                        <mxPoint x="1280" y="1560" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="730" y="1560"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="81" value="Hreg赋值" style="whiteSpace=wrap;html=1;fontSize=15;" vertex="1" parent="1">
+                    <mxGeometry x="1030" y="2155" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

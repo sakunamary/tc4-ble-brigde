@@ -29,11 +29,10 @@ String IpAddressToString(const IPAddress &ipAddress);                         //
 String processor(const String &var); // webpage function
 
 String local_IP;
-String TC4_String;
-String CmdString;
 
-QueueHandle_t queueCMD = xQueueCreate(5, sizeof(CmdString));
-QueueHandle_t queueTC4 = xQueueCreate(10, sizeof(TC4_String));
+
+QueueHandle_t queueCMD = xQueueCreate(5, sizeof(char[64]));
+QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[64]));
 
 
 //Modbus Registers Offsets
@@ -50,7 +49,7 @@ uint8_t macAddr[6];
 double Data[6];//温度数据
 
 
-const int BUFFER_SIZE = 512;
+const int BUFFER_SIZE = 64;
 
 BleSerial SerialBT;
 //ModbusIP object
@@ -60,54 +59,54 @@ uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
 
-//Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，并写入数组
+//Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_ModbusSendTask
 void TASK_ReadSerial(void *pvParameters) {
 
- TickType_t timeOut = 2000;
+ const TickType_t timeOut = 2000;
+
   while (true) {
     if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-      SerialBT.write(serialReadBuffer, count);
-      TC4_String =String((char *)serialReadBuffer);  
-      xQueueSend(queueTC4, &TC4_String, timeOut) ; 
+      SerialBT.write(serialReadBuffer, count);   
+      xQueueSend(queueTC4_data, &serialReadBuffer, timeOut) ;//发送数据到Queue
+     }
+    vTaskDelay(20);
     }
-
-    delay(20);
-  }
 }
 
-//Task for reading BLE Serial
+//Task  for Reading BLE
 void TASK_ReadBtTask(void *pvParameters) {
   while (true) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
       Serial_in.write(bleReadBuffer, count);   
-      CmdString =String((char *)bleReadBuffer);    
-    //Serial.println(CmdString);     
     }
-
-
-    delay(20);
+    vTaskDelay(20);
   }
 }
 
 void TASK_ModbusSendTask(void *pvParameters) {
+//接收TASK_ReadSerial 传递 QueueTC4_data 数据serialReadBuffer
+//将数据serialReadBuffer 转换为字符串 
+//tokenizer 将数据写入Data[]数组
+//Data[]数组 赋值给Hreg
+
     (void)pvParameters;
    //const  TickType_t xLastWakeTime;
     const TickType_t timeOut = 2000;
     int i = 0;
-    //const TickType_t xIntervel = 1000/ portTICK_PERIOD_MS;
-    /* Task Setup and Initialize */
-    // Initial the xLastWakeTime variable with the current time.
-    //xLastWakeTime = xTaskGetTickCount();
-    
+    uint8_t serialReadBuffer[BUFFER_SIZE];
+    String TC4_String;
+
     for (;;) // A Task shall never return or exit.
     { //for loop
         // Wait for the next cycle (intervel 1s).
          //vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
-        if (xQueueReceive(queueTC4, &TC4_String, timeOut) == pdPASS) {
-        Serial.println(TC4_String); 
+        if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) ==pdPASS) {
+
+            TC4_String = String((char *)serialReadBuffer);  
+            Serial.println(TC4_String); 
         /*
           StringTokenizer TC4_Data(TC4_String, ",");
             while(TC4_Data.hasNext()){
@@ -203,7 +202,7 @@ void setup() {
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ReadBtTask, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
+        TASK_ModbusSendTask, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
         ,
         2048 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
