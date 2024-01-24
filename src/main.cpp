@@ -93,14 +93,14 @@ void TASK_ModbusSendTask(void *pvParameters) {
 
     (void)pvParameters;
    //const  TickType_t xLastWakeTime;
-    const TickType_t timeOut = 2000;
+    const TickType_t timeOut = 1000;
     int i = 0;
     uint8_t serialReadBuffer[BUFFER_SIZE];
     String TC4_data_String;
 
     for (;;) // A Task shall never return or exit.
     { //for loop
-        if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) ==pdPASS) {
+        if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS) {
 
             TC4_data_String = String((char *)serialReadBuffer);  
             Serial.println(TC4_data_String); 
@@ -110,8 +110,9 @@ void TASK_ModbusSendTask(void *pvParameters) {
                     Data[i]=TC4_Data.nextToken(); // prints the next token in the string
                     i++;
                 }
-
 */
+
+    vTaskDelay(20);
         }     
     }
 }
