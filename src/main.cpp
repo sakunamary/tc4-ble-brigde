@@ -59,16 +59,19 @@ uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
 
+
+
 //Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_ModbusSendTask
 void TASK_ReadSerial(void *pvParameters) {
 
  const TickType_t timeOut = 2000;
-
+ String TC4_data_String;
   while (true) {
     if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-      SerialBT.write(serialReadBuffer, count);   
+      SerialBT.write(serialReadBuffer, count); 
       xQueueSend(queueTC4_data, &serialReadBuffer, timeOut) ;//发送数据到Queue
+      memset(serialReadBuffer,'\0',sizeof(serialReadBuffer));
      }
     vTaskDelay(20);
     }
@@ -80,6 +83,7 @@ void TASK_ReadBtTask(void *pvParameters) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
       Serial_in.write(bleReadBuffer, count);   
+      memset(bleReadBuffer,'\0',sizeof(bleReadBuffer));
     }
     vTaskDelay(20);
   }
@@ -103,20 +107,26 @@ void TASK_ModbusSendTask(void *pvParameters) {
         if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS) {
 
             TC4_data_String = String((char *)serialReadBuffer);  
+    
+        }             
             Serial.print(TC4_data_String); 
             Serial.println();
-        /*
-          StringTokenizer TC4_Data(TC4_String, ",");
-            while(TC4_Data.hasNext()){
-                    Data[i]=TC4_Data.nextToken(); // prints the next token in the string
+        if (TC4_data_String.startsWith("#")) { //
+
+        } else {
+
+                StringTokenizer TC4_Data(TC4_data_String, ",");
+
+                while(TC4_Data.hasNext()){
+                    Data[i]=TC4_Data.nextToken().toDouble(); // prints the next token in the string
                     i++;
-
-                    Data[1],Data[2]
                 }
-*/
-
+                   mb.Hreg(BT_HREG,Data[1]*100); //初始化赋值
+                   mb.Hreg(ET_HREG,Data[2]*100); //初始化赋值
+                i = 0;
+                }
     vTaskDelay(20);
-        }     
+    
     }
 }
 
