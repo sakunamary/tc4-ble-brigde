@@ -31,7 +31,7 @@ String processor(const String &var); // webpage function
 String local_IP;
 
 
-QueueHandle_t queueCMD = xQueueCreate(5, sizeof(char[64]));
+QueueHandle_t queueCMD = xQueueCreate(8, sizeof(char[64]));
 QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[64]));
 
 
@@ -65,7 +65,6 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 void TASK_ReadSerial(void *pvParameters) {
 
  const TickType_t timeOut = 2000;
- String TC4_data_String;
   while (true) {
     if (Serial_in.available()) {
       auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
@@ -82,12 +81,36 @@ void TASK_ReadBtTask(void *pvParameters) {
   while (true) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-      Serial_in.write(bleReadBuffer, count);   
+      Serial_in.write(bleReadBuffer, count); 
+      xQueueSend(queueCMD, &serialReadBuffer, timeOut) ;//发送数据到Queue  
       memset(bleReadBuffer,'\0',sizeof(bleReadBuffer));
     }
     vTaskDelay(20);
   }
 }
+
+
+//Task for sending READ 指令写入QueueTC4_data 传递给 TASK_ModbusSendTask
+void TASK_SendREADtoTC4(void *pvParameters) {
+(void)pvParameters;
+    const  TickType_t xLastWakeTime;
+    const TickType_t timeOut = 1000;
+    uint8_t CMDBuffer[BUFFER_SIZE]="READ;\r\n";
+
+    const TickType_t xIntervel = 1500/ portTICK_PERIOD_MS;
+    xLastWakeTime = xTaskGetTickCount();
+
+  for(;;) {
+    
+        vTaskDelayUntil(&xLastWakeTime, xIntervel);
+
+        if(xQueueSend(queueCMD, &CMDBuffer, timeOut) !=pdPASS ) {
+         vTaskDelay(1000);
+            } //发送数据到Queue  
+     }  
+}
+
+
 
 void TASK_ModbusSendTask(void *pvParameters) {
 //接收TASK_ReadSerial 传递 QueueTC4_data 数据serialReadBuffer
@@ -107,10 +130,10 @@ void TASK_ModbusSendTask(void *pvParameters) {
         if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS) {
 
             TC4_data_String = String((char *)serialReadBuffer);  
-    
-        }             
-            Serial.print(TC4_data_String); 
-            Serial.println();
+            //Serial.print(TC4_data_String); 
+            //Serial.println();
+                 
+
         if (TC4_data_String.startsWith("#")) { //
 
         } else {
@@ -123,10 +146,12 @@ void TASK_ModbusSendTask(void *pvParameters) {
                 }
                    mb.Hreg(BT_HREG,Data[1]*100); //初始化赋值
                    mb.Hreg(ET_HREG,Data[2]*100); //初始化赋值
+                   //Serial.println(Data[1]);
                 i = 0;
                 }
+        }  
     vTaskDelay(20);
-    
+
     }
 }
 
@@ -221,6 +246,19 @@ void setup() {
         ,
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
+
+
+    // Setup tasks to run independently.
+    xTaskCreatePinnedToCore(
+        TASK_SendREADtoTC4, "READtoTC4" // 测量电池电源数据，每分钟测量一次
+        ,
+        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+    );
+
 
 
 #if defined(DEBUG_MODE)
