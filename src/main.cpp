@@ -62,7 +62,7 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 
 
 //Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_ModbusSendTask
-void TASK_ReadSerial(void *pvParameters) {
+void TASK_ReadDataFormTC4(void *pvParameters) {
 
  const TickType_t timeOut = 2000;
   while (true) {
@@ -78,11 +78,12 @@ void TASK_ReadSerial(void *pvParameters) {
 
 //Task  for Reading BLE
 void TASK_ReadBtTask(void *pvParameters) {
+ const TickType_t timeOut = 1000;  
   while (true) {
     if (SerialBT.available()) {
       auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
       Serial_in.write(bleReadBuffer, count); 
-      xQueueSend(queueCMD, &serialReadBuffer, timeOut) ;//发送数据到Queue  
+      xQueueSendToFront(queueCMD, &serialReadBuffer, timeOut) ;//发送数据到Queue  
       memset(bleReadBuffer,'\0',sizeof(bleReadBuffer));
     }
     vTaskDelay(20);
@@ -90,10 +91,11 @@ void TASK_ReadBtTask(void *pvParameters) {
 }
 
 
-//Task for sending READ 指令写入QueueTC4_data 传递给 TASK_ModbusSendTask
+//Task for keep sending READ 指令写入QueueTC4_data 传递给 TASK_ModbusSendTask
 void TASK_SendREADtoTC4(void *pvParameters) {
 (void)pvParameters;
-    const  TickType_t xLastWakeTime;
+
+     TickType_t xLastWakeTime;
     const TickType_t timeOut = 1000;
     uint8_t CMDBuffer[BUFFER_SIZE]="READ;\r\n";
 
@@ -104,8 +106,8 @@ void TASK_SendREADtoTC4(void *pvParameters) {
     
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
-        if(xQueueSend(queueCMD, &CMDBuffer, timeOut) !=pdPASS ) {
-         vTaskDelay(1000);
+        if(xQueueSend(queueCMD, &CMDBuffer, timeOut) !=pdTRUE ) {
+         vTaskDelay(1500);
             } //发送数据到Queue  
      }  
 }
@@ -146,7 +148,7 @@ void TASK_ModbusSendTask(void *pvParameters) {
                 }
                    mb.Hreg(BT_HREG,Data[1]*100); //初始化赋值
                    mb.Hreg(ET_HREG,Data[2]*100); //初始化赋值
-                   //Serial.println(Data[1]);
+                   Serial.println(Data[1]);
                 i = 0;
                 }
         }  
@@ -178,7 +180,7 @@ if (var == "version")
 
 void setup() {
 
-    xThermoDataMutex = xSemaphoreCreateMutex();
+    //xThermoDataMutex = xSemaphoreCreateMutex();
 
   //Disable watchdog timers
   disableCore0WDT();
@@ -208,7 +210,7 @@ void setup() {
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ReadSerial, "ReadSerial" // 测量电池电源数据，每分钟测量一次
+        TASK_ReadDataFormTC4, "DataFormTC4" // 测量电池电源数据，每分钟测量一次
         ,
        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -217,13 +219,13 @@ void setup() {
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
 #if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=1:ReadSerial OK\n");
+    Serial.printf("\nTASK=1:DataFormTC4 OK\n");
 #endif
 
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ReadBtTask, "ReadBtTask" // 测量电池电源数据，每分钟测量一次
+        TASK_ReadBtTask, "ReadBLE" // 测量电池电源数据，每分钟测量一次
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -232,7 +234,7 @@ void setup() {
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
 #if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=2:ReadBtTask OK\n");
+    Serial.printf("\nTASK=2:ReadBLE OK\n");
 #endif
 
 
@@ -246,11 +248,13 @@ void setup() {
         ,
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
-
+#if defined(DEBUG_MODE)
+    Serial.printf("\nTASK=3:ModbusSendTask OK\n");
+#endif
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_SendREADtoTC4, "READtoTC4" // 测量电池电源数据，每分钟测量一次
+        TASK_SendREADtoTC4, "READ_CMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
         2048 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -262,7 +266,7 @@ void setup() {
 
 
 #if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=3:ModbusSendTask OK \n");
+    Serial.printf("\nTASK=4:READ_CMDtoTC4 OK \n");
 #endif
 
 
