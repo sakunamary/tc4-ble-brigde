@@ -95,26 +95,17 @@ void TASK_ReadBtTask(void *pvParameters) {
 void TASK_SendREADtoTC4(void *pvParameters) {
 (void)pvParameters;
 
-     TickType_t xLastWakeTime;
+    TickType_t xLastWakeTime;
     const TickType_t timeOut = 1000;
-    uint8_t CMDBuffer[BUFFER_SIZE]="READ;\r\n";
-
     const TickType_t xIntervel = 1500/ portTICK_PERIOD_MS;
+    uint8_t CMDBuffer[BUFFER_SIZE]="READ;\r\n";
     xLastWakeTime = xTaskGetTickCount();
 
   for(;;) {
     
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-
-        if(xQueueSend(queueCMD, &CMDBuffer, timeOut) ==pdTRUE ) {
-         vTaskDelay(1500);
-            } 
-            else {
-                      auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-      Serial_in.write(bleReadBuffer, count); 
-            }
-            //发送数据到QueueCMD  
-     }  
+        xQueueSend(queueCMD, &CMDBuffer, timeOut);
+        }  
 }
 
 
@@ -137,11 +128,10 @@ void TASK_SendCMDtoTC4(void *pvParameters) {
 
         if (xQueueReceive(queueCMD, &CMDBuffer, timeOut) == pdPASS) { //从接收QueueCMD 接收指令
             CMD_String = String((char *)CMDBuffer);  
-            Serial_in.print(CMD_String); 
+            Serial_in.print((char *)CMDBuffer); 
+            Serial.print(CMD_String);
         vTaskDelay(20);
-        } else{
-            vTaskDelay(1000);
-        }
+        } 
     } //发送数据到Queue  
       
 }
@@ -166,14 +156,9 @@ void TASK_ModbusSendTask(void *pvParameters) {
         if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS) {
 
             TC4_data_String = String((char *)serialReadBuffer);  
-            //Serial.print(TC4_data_String); 
-            //Serial.println();
-                 
-
-        if (TC4_data_String.startsWith("#")) { //
-
-        } else {
-
+            Serial.print(TC4_data_String);
+                
+        if (!TC4_data_String.startsWith("#")) { //
                 StringTokenizer TC4_Data(TC4_data_String, ",");
 
                 while(TC4_Data.hasNext()){
@@ -248,7 +233,7 @@ void setup() {
         ,
        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -292,7 +277,7 @@ void setup() {
         ,
         2048 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -301,6 +286,24 @@ void setup() {
 
 #if defined(DEBUG_MODE)
     Serial.printf("\nTASK=4:READ_CMDtoTC4 OK \n");
+#endif
+
+
+    // Setup tasks to run independently.
+    xTaskCreatePinnedToCore(
+        TASK_SendCMDtoTC4, "SendCMDtoTC4" // 测量电池电源数据，每分钟测量一次
+        ,
+        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+    );
+
+
+
+#if defined(DEBUG_MODE)
+    Serial.printf("\nTASK=5:SendCMDtoTC4 OK \n");
 #endif
 
 
