@@ -106,10 +106,44 @@ void TASK_SendREADtoTC4(void *pvParameters) {
     
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
-        if(xQueueSend(queueCMD, &CMDBuffer, timeOut) !=pdTRUE ) {
+        if(xQueueSend(queueCMD, &CMDBuffer, timeOut) ==pdTRUE ) {
          vTaskDelay(1500);
-            } //发送数据到Queue  
+            } 
+            else {
+                      auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+      Serial_in.write(bleReadBuffer, count); 
+            }
+            //发送数据到QueueCMD  
      }  
+}
+
+
+
+//Task for keep sending 指令到TC4
+void TASK_SendCMDtoTC4(void *pvParameters) {
+(void)pvParameters;
+
+     TickType_t xLastWakeTime;
+    const TickType_t timeOut = 1000;
+    uint8_t CMDBuffer[BUFFER_SIZE];
+    String  CMD_String;
+
+    const TickType_t xIntervel = 1000/ portTICK_PERIOD_MS;
+    xLastWakeTime = xTaskGetTickCount();
+
+  for(;;) {
+    
+        vTaskDelayUntil(&xLastWakeTime, xIntervel);
+
+        if (xQueueReceive(queueCMD, &CMDBuffer, timeOut) == pdPASS) { //从接收QueueCMD 接收指令
+            CMD_String = String((char *)CMDBuffer);  
+            Serial_in.print(CMD_String); 
+        vTaskDelay(20);
+        } else{
+            vTaskDelay(1000);
+        }
+    } //发送数据到Queue  
+      
 }
 
 
