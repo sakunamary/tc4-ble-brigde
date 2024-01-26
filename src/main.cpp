@@ -129,7 +129,7 @@ void TASK_SendCMDtoTC4(void *pvParameters) {
         if (xQueueReceive(queueCMD, &CMDBuffer, timeOut) == pdPASS) { //从接收QueueCMD 接收指令
             CMD_String = String((char *)CMDBuffer);  
             Serial_in.print((char *)CMDBuffer); 
-            Serial.print(CMD_String);
+            //Serial.print(CMD_String);
         vTaskDelay(20);
         } 
     } //发送数据到Queue  
@@ -167,7 +167,7 @@ void TASK_ModbusSendTask(void *pvParameters) {
                 }
                    mb.Hreg(BT_HREG,Data[1]*100); //初始化赋值
                    mb.Hreg(ET_HREG,Data[2]*100); //初始化赋值
-                   Serial.println(Data[1]);
+                   //Serial.println(Data[1]);
                 i = 0;
                 }
         }  
