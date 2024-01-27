@@ -177,6 +177,18 @@ void TASK_ModbusSendTask(void *pvParameters) {
 }
 
 
+void TASK_ModbusCMD(void *pvParameters) {
+    (void)pvParameters;
+
+    for(;;){
+
+        
+
+    }
+
+}
+
+
 
 String IpAddressToString(const IPAddress &ipAddress)
 {

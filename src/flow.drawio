@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="djuoKwj-kMu_pSdnhJvP" name="第 1 页">
-        <mxGraphModel dx="1290" dy="2246" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="2221" dy="2126" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -228,12 +228,12 @@
                 <mxCell id="72" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;br&gt;&lt;/div&gt;" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontSize=15;" parent="1" source="68" target="71" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="102" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;TASK_SendCMDtoTC4&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="72">
+                <mxCell id="102" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;TASK_SendCMDtoTC4&lt;/span&gt;&lt;/div&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="72" vertex="1" connectable="0">
                     <mxGeometry x="-0.0714" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="108" value="1S" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="72">
+                <mxCell id="108" value="1S" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="72" vertex="1" connectable="0">
                     <mxGeometry x="0.674" y="1" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
@@ -267,7 +267,7 @@
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="78" value="Tokenizer" style="whiteSpace=wrap;html=1;fontSize=15;" parent="1" vertex="1">
-                    <mxGeometry x="870" y="2150" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="870" y="2140" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="79" value="" style="endArrow=none;html=1;" parent="1" edge="1">
                     <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -278,18 +278,22 @@
                         </Array>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="104" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="81">
+                <mxCell id="104" value="" style="edgeStyle=none;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="81" edge="1" target="103">
                     <mxGeometry relative="1" as="geometry">
                         <mxPoint x="930" y="2360" as="targetPoint"/>
+                        <mxPoint x="930" y="2320" as="sourcePoint"/>
+                        <Array as="points">
+                            <mxPoint x="770" y="2260"/>
+                        </Array>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="81" value="Hreg赋值" style="whiteSpace=wrap;html=1;fontSize=15;" parent="1" vertex="1">
-                    <mxGeometry x="870" y="2260" width="120" height="60" as="geometry"/>
+                    <mxGeometry x="870" y="2230" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="86" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" parent="1" source="85" target="68" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="107" value="1.5S" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="86">
+                <mxCell id="107" value="1.5S" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="86" vertex="1" connectable="0">
                     <mxGeometry x="-0.12" y="-2" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
@@ -306,7 +310,7 @@
                 <mxCell id="97" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="95" target="66" edge="1">
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
-                <mxCell id="111" value="实时" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="97">
+                <mxCell id="111" value="实时" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="97" vertex="1" connectable="0">
                     <mxGeometry x="-0.0435" y="2" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
@@ -321,7 +325,7 @@
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="110" value="1S" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="98">
+                <mxCell id="110" value="1S" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" parent="98" vertex="1" connectable="0">
                     <mxGeometry x="0.2857" y="1" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
@@ -335,8 +339,59 @@
                 <mxCell id="100" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;TASK_ModbusSendTask&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d80073;fontColor=#ffffff;strokeColor=#A50040;" parent="1" vertex="1">
                     <mxGeometry x="610" y="2050" width="180" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="103" value="Artisan&lt;br&gt;PC" style="whiteSpace=wrap;html=1;fontSize=15;" vertex="1" parent="1">
-                    <mxGeometry x="870" y="2350" width="120" height="60" as="geometry"/>
+                <mxCell id="115" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="103" target="114">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="280" y="2260"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="103" value="Artisan&lt;br&gt;PC" style="whiteSpace=wrap;html=1;fontSize=15;" parent="1" vertex="1">
+                    <mxGeometry x="540" y="2230" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="118" style="edgeStyle=none;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="114" target="117">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="125" value="250ms" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="118">
+                    <mxGeometry x="-0.0258" y="-5" relative="1" as="geometry">
+                        <mxPoint x="-1" as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="114" value="&lt;div style=&quot;color: rgb(204, 204, 204); background-color: rgb(31, 31, 31); font-family: Menlo, Menlo, Menlo, Menlo, Monaco, &amp;quot;Courier New&amp;quot;, monospace; font-size: 14px; line-height: 21px;&quot;&gt;&lt;span style=&quot;color: #dcdcaa;&quot;&gt;TASK_ModbusCMD&lt;/span&gt;&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d80073;fontColor=#ffffff;strokeColor=#A50040;" vertex="1" parent="1">
+                    <mxGeometry x="189.5" y="2140" width="180" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="120" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="117" target="119">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="117" value="扫描Hreg" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+                    <mxGeometry x="-200" y="2140" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="121" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fillColor=#d80073;strokeColor=#A50040;strokeWidth=3;" edge="1" parent="1" source="119" target="71">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint y="2030"/>
+                            <mxPoint y="1780"/>
+                            <mxPoint x="220" y="1780"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="123" style="edgeStyle=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="119" target="122">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="119" value="高优先度命令&lt;br&gt;Hreg变动&lt;br&gt;产生对应指令" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
+                    <mxGeometry x="-200" y="2000" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="124" style="edgeStyle=none;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.25;entryY=0;entryDx=0;entryDy=0;fillColor=#f0a30a;strokeColor=#BD7000;strokeWidth=3;" edge="1" parent="1" source="122" target="68">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="460" y="1740" as="targetPoint"/>
+                        <Array as="points">
+                            <mxPoint x="-140" y="1750"/>
+                            <mxPoint x="550" y="1750"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="122" value="低优先度命令&lt;br&gt;Hreg变动&lt;br&gt;产生对应指令" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
+                    <mxGeometry x="-200" y="1833.5" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>
