@@ -2,9 +2,9 @@
 #include "config.h"
 
 #include <BleSerial.h>
-#include <esp_attr.h>
-#include <esp_task_wdt.h>
-#include <driver/rtc_io.h>
+//#include <esp_attr.h>
+//#include <esp_task_wdt.h>
+//#include <driver/rtc_io.h>
 
 #include <HardwareSerial.h>
 
@@ -42,7 +42,7 @@ char ap_name[30];
 uint8_t macAddr[6];
 double Data[6]; // 温度数据
 
-const int BUFFER_SIZE = 64;
+const int BUFFER_SIZE = 32;
 
 BleSerial SerialBT;
 // ModbusIP object
@@ -222,10 +222,10 @@ void setup()
     // xThermoDataMutex = xSemaphoreCreateMutex();
 
     // Disable watchdog timers
-    disableCore0WDT();
-    disableCore1WDT();
-    disableLoopWDT();
-    esp_task_wdt_delete(NULL);
+   // disableCore0WDT();
+    //disableCore1WDT();
+    //disableLoopWDT();
+    //esp_task_wdt_delete(NULL);
     // rtc_wdt_protect_off();
     // rtc_wdt_disable();
 
@@ -293,7 +293,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_SendREADtoTC4, "READ_CMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
+        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -334,17 +334,6 @@ void setup()
     Serial.printf("\nTASK=6:ModbusCMD OK \n");
 #endif
 */
-    // for index.html
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send_P(200, "text/html", index_html, processor); });
-
-    AsyncElegantOTA.begin(&server); // Start AsyncElegantOTA
-    server.begin();
-
-#if defined(DEBUG_MODE)
-    Serial.println("HTTP OTA server started");
-#endif
-
     // Init BLE Serial
     SerialBT.begin(ap_name, true, 2);
     SerialBT.setTimeout(10);
@@ -354,7 +343,7 @@ void setup()
 
 // Init Modbus-TCP
 #if defined(DEBUG_MODE)
-    Serial.printf("\nStart Modbus-TCP   service...\n");
+    Serial.printf("\nStart Modbus-TCP  service OK\n");
 #endif
     mb.server(502); // Start Modbus IP //default port :502
     // Add SENSOR_IREG register - Use addIreg() for analog Inputs
@@ -369,6 +358,16 @@ void setup()
     mb.Hreg(FAN_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 0); // 初始化赋值
     mb.Hreg(SV_HREG, 0);  // 初始化赋值
+
+      // for index.html
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send_P(200, "text/html", index_html, processor); });
+
+    AsyncElegantOTA.begin(&server); // Start AsyncElegantOTA
+    server.begin();
+#if defined(DEBUG_MODE)
+    Serial.println("\nHTTP OTA server started\n");
+#endif
 }
 
 void loop()
