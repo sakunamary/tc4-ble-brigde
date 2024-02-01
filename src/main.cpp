@@ -55,7 +55,7 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 void TASK_ReadDataFormTC4(void *pvParameters)
 {
 
-    const TickType_t timeOut = 2000;
+    const TickType_t timeOut = 1500;
     while (true)
     {
         if (Serial_in.available())
@@ -78,8 +78,10 @@ void TASK_ReadBtTask(void *pvParameters)
         if (SerialBT.available())
         {
             auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-            Serial_in.write(bleReadBuffer, count);
-            xQueueSendToFront(queueCMD, &serialReadBuffer, timeOut); // 发送数据到Queue
+           // Serial_in.write(bleReadBuffer, count);
+            //Serial.write(bleReadBuffer, count); //for debug
+
+            xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut); // 发送数据到Queue
             memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
         }
         vTaskDelay(20);
@@ -92,7 +94,7 @@ void TASK_SendREADtoTC4(void *pvParameters)
     (void)pvParameters;
 
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1000;
+    const TickType_t timeOut = 1500;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
     uint8_t CMDBuffer[BUFFER_SIZE] = "READ;\r\n";
     xLastWakeTime = xTaskGetTickCount();
@@ -111,7 +113,7 @@ void TASK_SendCMDtoTC4(void *pvParameters)
     (void)pvParameters;
 
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1000;
+    const TickType_t timeOut = 2000;
     uint8_t CMDBuffer[BUFFER_SIZE];
     String CMD_String;
 
@@ -127,7 +129,8 @@ void TASK_SendCMDtoTC4(void *pvParameters)
         { // 从接收QueueCMD 接收指令
             CMD_String = String((char *)CMDBuffer);
             Serial_in.print((char *)CMDBuffer);
-            // Serial.print(CMD_String);
+        
+            //Serial.print(CMD_String);//for debug
             vTaskDelay(20);
         }
     } // 发送数据到Queue
@@ -142,7 +145,7 @@ void TASK_ModbusSendTask(void *pvParameters)
 
     (void)pvParameters;
     // const  TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1000;
+    const TickType_t timeOut = 3000;
     int i = 0;
     uint8_t serialReadBuffer[BUFFER_SIZE];
     String TC4_data_String;
@@ -153,7 +156,7 @@ void TASK_ModbusSendTask(void *pvParameters)
         {
 
             TC4_data_String = String((char *)serialReadBuffer);
-            Serial.print(TC4_data_String);
+            //Serial.print(TC4_data_String);
 
             if (!TC4_data_String.startsWith("#"))
             { //
@@ -189,6 +192,9 @@ void TASK_ModbusCMD(void *pvParameters)
     for (;;)
     {
     
+//获取上一周期的Hreg值
+
+
     }
 }
 
@@ -273,7 +279,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_ModbusSendTask, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
         ,
-        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024*8 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -287,7 +293,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_SendREADtoTC4, "READ_CMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -302,7 +308,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_SendCMDtoTC4, "SendCMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024*6 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -312,7 +318,7 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("\nTASK=5:SendCMDtoTC4 OK \n");
 #endif
-
+/*
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
         TASK_ModbusCMD, "TASK_ModbusCMD" // 测量电池电源数据，每分钟测量一次
@@ -327,7 +333,7 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("\nTASK=6:ModbusCMD OK \n");
 #endif
-
+*/
     // for index.html
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send_P(200, "text/html", index_html, processor); });
@@ -336,7 +342,7 @@ void setup()
     server.begin();
 
 #if defined(DEBUG_MODE)
-    Serial.println("HTTP server started");
+    Serial.println("HTTP OTA server started");
 #endif
 
     // Init BLE Serial
