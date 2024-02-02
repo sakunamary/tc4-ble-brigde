@@ -189,15 +189,19 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
     if (init_status) {
-        last_SV = mb.Hreg(FAN_HREG); // 初始化赋值
+        last_SV = mb.Hreg(SV_HREG); // 初始化赋值
         last_FAN = mb.Hreg(FAN_HREG); // 初始化赋值
-        last_FAN = mb.Hreg(SV_HREG);  // 初始化赋值
+        last_PWR = mb.Hreg(HEAT_HREG);  // 初始化赋值
         init_status= false;
     }else {
 
         if (last_SV != mb.Hreg(FAN_HREG)){
             last_SV =mb.Hreg(FAN_HREG); //同步数据
-            Serial_in.printf("IO3,%d\r\n",last_SV);
+            Serial_in.printf("IO3,%d\r\n",last_SV);     
+        } 
+        if (last_PWR != mb.Hreg(HEAT_HREG)){
+            last_PWR =mb.Hreg(HEAT_HREG); //同步数据
+            Serial_in.printf("IO3,%d\r\n",last_SV);     
         } 
 
     }
@@ -297,7 +301,7 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("\nTASK=5:SendCMDtoTC4 OK \n");
 #endif
-/*
+
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
@@ -310,9 +314,9 @@ void setup()
     );
 
 #if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=6:ModbusCMD OK \n");
+    Serial.printf("\nTASK=6:TASK_Modbus_From_CMD OK \n");
 #endif
-*/
+
     // Init BLE Serial
     SerialBT.begin(ap_name, true, 2);
     SerialBT.setTimeout(10);
