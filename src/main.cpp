@@ -27,6 +27,7 @@ const uint16_t ET_HREG = 3002;
 const uint16_t HEAT_HREG = 3003;
 const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
+const uint16_t RESET_HREG = 3006;
 
 char ap_name[30];
 uint8_t macAddr[6];
@@ -201,7 +202,13 @@ void TASK_Modbus_From_CMD(void *pvParameters)
         } 
         if (last_PWR != mb.Hreg(HEAT_HREG)){
             last_PWR =mb.Hreg(HEAT_HREG); //同步数据
-            Serial_in.printf("IO1,%d\r\n",last_PWR);     
+            Serial_in.printf("OT1,%d\r\n",last_PWR);    
+        } 
+        if (mb.Hreg(RESET_HREG) !=  0) {
+           
+            Serial_in.printf("reset\r\n");  
+            mb.Hreg(RESET_HREG,0);  
+
         } 
 
     }
@@ -335,12 +342,14 @@ void setup()
     mb.addHreg(HEAT_HREG);
     mb.addHreg(FAN_HREG);
     mb.addHreg(SV_HREG);
+    mb.addHreg(RESET_HREG);
 
     mb.Hreg(BT_HREG, 0);  // 初始化赋值
     mb.Hreg(ET_HREG, 0);  // 初始化赋值
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 0); // 初始化赋值
     mb.Hreg(SV_HREG, 0);  // 初始化赋值
+    mb.addHreg(RESET_HREG,0);
 }
 
 void loop()
