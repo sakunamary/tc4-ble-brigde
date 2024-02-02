@@ -332,13 +332,13 @@ void setup()
     // Add SENSOR_IREG register - Use addIreg() for analog Inputs
     mb.addHreg(BT_HREG);
     mb.addHreg(ET_HREG);
-    mb.addHreg(FAN_HREG);
+    mb.addHreg(HEAT_HREG);
     mb.addHreg(FAN_HREG);
     mb.addHreg(SV_HREG);
 
     mb.Hreg(BT_HREG, 0);  // 初始化赋值
     mb.Hreg(ET_HREG, 0);  // 初始化赋值
-    mb.Hreg(FAN_HREG, 0); // 初始化赋值
+    mb.Hreg(HEAT_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 0); // 初始化赋值
     mb.Hreg(SV_HREG, 0);  // 初始化赋值
 }
