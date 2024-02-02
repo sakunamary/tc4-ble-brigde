@@ -2,16 +2,12 @@
 #include "config.h"
 
 #include <BleSerial.h>
-//#include <esp_attr.h>
-//#include <esp_task_wdt.h>
-//#include <driver/rtc_io.h>
-
 #include <HardwareSerial.h>
 
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
+#include <ElegantOTA.h>
 
 #include <StringTokenizer.h>
 
@@ -51,7 +47,7 @@ ModbusIP mb;
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
-// Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_ModbusSendTask
+// Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
 void TASK_ReadDataFormTC4(void *pvParameters)
 {
 
@@ -70,7 +66,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
 }
 
 // Task  for Reading BLE
-void TASK_ReadBtTask(void *pvParameters)
+void TASK_CMD_From_BLE(void *pvParameters)
 {
     const TickType_t timeOut = 1000;
     while (true)
@@ -88,8 +84,8 @@ void TASK_ReadBtTask(void *pvParameters)
     }
 }
 
-// Task for keep sending READ 指令写入QueueTC4_data 传递给 TASK_ModbusSendTask
-void TASK_SendREADtoTC4(void *pvParameters)
+// Task for keep sending READ 指令写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
+void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
 
@@ -136,7 +132,7 @@ void TASK_SendCMDtoTC4(void *pvParameters)
     } // 发送数据到Queue
 }
 
-void TASK_ModbusSendTask(void *pvParameters)
+void TASK_Modbus_Send_DATA(void *pvParameters)
 {
     // 接收TASK_ReadSerial 传递 QueueTC4_data 数据serialReadBuffer
     // 将数据serialReadBuffer 转换为字符串
@@ -177,7 +173,7 @@ void TASK_ModbusSendTask(void *pvParameters)
     }
 }
 
-void TASK_ModbusCMD(void *pvParameters)
+void TASK_Modbus_From_CMD(void *pvParameters)
 {
     (void)pvParameters;
 
@@ -218,17 +214,6 @@ String processor(const String &var)
 
 void setup()
 {
-
-    // xThermoDataMutex = xSemaphoreCreateMutex();
-
-    // Disable watchdog timers
-   // disableCore0WDT();
-    //disableCore1WDT();
-    //disableLoopWDT();
-    //esp_task_wdt_delete(NULL);
-    // rtc_wdt_protect_off();
-    // rtc_wdt_disable();
-
     Serial.begin(BAUDRATE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
@@ -263,7 +248,7 @@ void setup()
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ReadBtTask, "ReadBLE" // 测量电池电源数据，每分钟测量一次
+        TASK_CMD_From_BLE, "CMD_From_BLE" // 测量电池电源数据，每分钟测量一次
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -277,9 +262,9 @@ void setup()
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ModbusSendTask, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
+        TASK_Modbus_Send_DATA, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
         ,
-        1024*8 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024*6 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -291,9 +276,9 @@ void setup()
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_SendREADtoTC4, "READ_CMDtoTC4" // 测量电池电源数据，每分钟测量一次
+        TASK_Send_READ_CMDtoTC4, "READ_CMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -321,7 +306,7 @@ void setup()
 /*
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ModbusCMD, "TASK_ModbusCMD" // 测量电池电源数据，每分钟测量一次
+        TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
         2048 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -363,14 +348,18 @@ void setup()
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
               { request->send_P(200, "text/html", index_html, processor); });
 
-    AsyncElegantOTA.begin(&server); // Start AsyncElegantOTA
+  
+    ElegantOTA.begin(&server);    // Start ElegantOTA
     server.begin();
 #if defined(DEBUG_MODE)
     Serial.println("\nHTTP OTA server started\n");
 #endif
+
+
 }
 
 void loop()
 {
     mb.task();
+    ElegantOTA.loop();
 }
