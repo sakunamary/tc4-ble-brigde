@@ -170,21 +170,37 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
 void TASK_Modbus_From_CMD(void *pvParameters)
 {
     (void)pvParameters;
-
+    bool init_status= true;
     uint16_t last_SV;
     uint16_t last_FAN;
     uint16_t last_PWR;
+    TickType_t xLastWakeTime;
+    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    xLastWakeTime = xTaskGetTickCount();
+
     /*
     const uint16_t HEAT_HREG = 3003;
     const uint16_t FAN_HREG = 3004;
     const uint16_t SV_HREG = 3005;
     */
+
     for (;;)
     {
-    
-//获取上一周期的Hreg值
+    vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
+    if (init_status) {
+        last_SV = mb.Hreg(FAN_HREG); // 初始化赋值
+        last_FAN = mb.Hreg(FAN_HREG); // 初始化赋值
+        last_FAN = mb.Hreg(SV_HREG);  // 初始化赋值
+        init_status= false;
+    }else {
 
+        if (last_SV != mb.Hreg(FAN_HREG)){
+            last_SV =mb.Hreg(FAN_HREG); //同步数据
+            Serial_in.printf("IO3,%d\r\n",last_SV);
+        } 
+
+    }
     }
 }
 
