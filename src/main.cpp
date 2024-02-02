@@ -4,11 +4,6 @@
 #include <BleSerial.h>
 #include <HardwareSerial.h>
 
-#include <WiFi.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <ElegantOTA.h>
-
 #include <StringTokenizer.h>
 
 #include <ModbusIP_ESP8266.h>
@@ -16,8 +11,7 @@
 // spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer
 HardwareSerial Serial_in(2);
 SemaphoreHandle_t xThermoDataMutex = NULL;
-
-AsyncWebServer server(80);
+    
 
 String IpAddressToString(const IPAddress &ipAddress); // 转换IP地址格式
 String processor(const String &var);                  // webpage function
@@ -194,23 +188,7 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     }
 }
 
-String IpAddressToString(const IPAddress &ipAddress)
-{
-    return String(ipAddress[0]) + String(".") +
-           String(ipAddress[1]) + String(".") +
-           String(ipAddress[2]) + String(".") +
-           String(ipAddress[3]);
-}
 
-String processor(const String &var)
-{
-    if (var == "version")
-    {
-        return VERSION;
-    }
-
-    return String();
-}
 
 void setup()
 {
@@ -343,23 +321,9 @@ void setup()
     mb.Hreg(FAN_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 0); // 初始化赋值
     mb.Hreg(SV_HREG, 0);  // 初始化赋值
-
-      // for index.html
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send_P(200, "text/html", index_html, processor); });
-
-  
-    ElegantOTA.begin(&server);    // Start ElegantOTA
-    server.begin();
-#if defined(DEBUG_MODE)
-    Serial.println("\nHTTP OTA server started\n");
-#endif
-
-
 }
 
 void loop()
 {
     mb.task();
-    ElegantOTA.loop();
 }
