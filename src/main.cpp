@@ -11,7 +11,6 @@
 // spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer
 HardwareSerial Serial_in(2);
 SemaphoreHandle_t xThermoDataMutex = NULL;
-    
 
 String IpAddressToString(const IPAddress &ipAddress); // 转换IP地址格式
 String processor(const String &var);                  // webpage function
@@ -69,8 +68,8 @@ void TASK_CMD_From_BLE(void *pvParameters)
         if (SerialBT.available())
         {
             auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-           // Serial_in.write(bleReadBuffer, count);
-            //Serial.write(bleReadBuffer, count); //for debug
+            // Serial_in.write(bleReadBuffer, count);
+            // Serial.write(bleReadBuffer, count); //for debug
 
             xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut); // 发送数据到Queue
             memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
@@ -104,11 +103,11 @@ void TASK_SendCMDtoTC4(void *pvParameters)
     (void)pvParameters;
 
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 2000;
+    const TickType_t timeOut = 1000;
     uint8_t CMDBuffer[BUFFER_SIZE];
     String CMD_String;
 
-    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
@@ -120,8 +119,6 @@ void TASK_SendCMDtoTC4(void *pvParameters)
         { // 从接收QueueCMD 接收指令
             CMD_String = String((char *)CMDBuffer);
             Serial_in.print((char *)CMDBuffer);
-        
-            //Serial.print(CMD_String);//for debug
             vTaskDelay(20);
         }
     } // 发送数据到Queue
@@ -136,7 +133,7 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
 
     (void)pvParameters;
     // const  TickType_t xLastWakeTime;
-    const TickType_t timeOut = 3000;
+    const TickType_t timeOut = 1500;
     int i = 0;
     uint8_t serialReadBuffer[BUFFER_SIZE];
     String TC4_data_String;
@@ -147,7 +144,7 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
         {
 
             TC4_data_String = String((char *)serialReadBuffer);
-            //Serial.print(TC4_data_String);
+            // Serial.print(TC4_data_String);
 
             if (!TC4_data_String.startsWith("#"))
             { //
@@ -164,19 +161,19 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
                 i = 0;
             }
         }
-        vTaskDelay(20);
+        vTaskDelay(50);
     }
 }
-
+// 从PC artisan 获取命令后转为TC4格式命令再发送到TC4
 void TASK_Modbus_From_CMD(void *pvParameters)
 {
     (void)pvParameters;
-    bool init_status= true;
+    bool init_status = true;
     uint16_t last_SV;
     uint16_t last_FAN;
     uint16_t last_PWR;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     /*
@@ -187,35 +184,36 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 
     for (;;)
     {
-    vTaskDelayUntil(&xLastWakeTime, xIntervel);
+        vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
-    if (init_status) {
-        last_SV = mb.Hreg(SV_HREG); // 初始化赋值
-        last_FAN = mb.Hreg(FAN_HREG); // 初始化赋值
-        last_PWR = mb.Hreg(HEAT_HREG);  // 初始化赋值
-        init_status= false;
-    }else {
+        if (init_status)
+        {
+            last_SV = mb.Hreg(SV_HREG);    // 初始化赋值
+            last_FAN = mb.Hreg(FAN_HREG);  // 初始化赋值
+            last_PWR = mb.Hreg(HEAT_HREG); // 初始化赋值
+            init_status = false;
+        }
+        else
+        {
 
-        if (last_FAN != mb.Hreg(FAN_HREG)){
-            last_FAN =mb.Hreg(FAN_HREG); //同步数据
-            Serial_in.printf("IO3,%d\r\n",last_FAN);     
-        } 
-        if (last_PWR != mb.Hreg(HEAT_HREG)){
-            last_PWR =mb.Hreg(HEAT_HREG); //同步数据
-            Serial_in.printf("OT1,%d\r\n",last_PWR);    
-        } 
-        if (mb.Hreg(RESET_HREG) !=  0) {
-           
-            Serial_in.printf("reset\r\n");  
-            mb.Hreg(RESET_HREG,0);  
-
-        } 
-
-    }
+            if (last_FAN != mb.Hreg(FAN_HREG))
+            {
+                last_FAN = mb.Hreg(FAN_HREG); // 同步数据
+                Serial_in.printf("IO3,%d\r\n", last_FAN);
+            }
+            if (last_PWR != mb.Hreg(HEAT_HREG))
+            {
+                last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
+                Serial_in.printf("OT1,%d\r\n", last_PWR);
+            }
+            if (mb.Hreg(RESET_HREG) != 0)
+            {
+                Serial_in.printf("reset\r\n");
+                mb.Hreg(RESET_HREG, 0);
+            }
+        }
     }
 }
-
-
 
 void setup()
 {
@@ -243,7 +241,7 @@ void setup()
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -257,7 +255,7 @@ void setup()
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -269,9 +267,9 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_Send_DATA, "ModbusSendTask" // 测量电池电源数据，每分钟测量一次
         ,
-        1024*6 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 6 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -285,7 +283,7 @@ void setup()
         ,
         1024 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -298,7 +296,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_SendCMDtoTC4, "SendCMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        1024*6 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 6 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -344,12 +342,12 @@ void setup()
     mb.addHreg(SV_HREG);
     mb.addHreg(RESET_HREG);
 
-    mb.Hreg(BT_HREG, 0);  // 初始化赋值
-    mb.Hreg(ET_HREG, 0);  // 初始化赋值
+    mb.Hreg(BT_HREG, 0);   // 初始化赋值
+    mb.Hreg(ET_HREG, 0);   // 初始化赋值
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
-    mb.Hreg(FAN_HREG, 0); // 初始化赋值
-    mb.Hreg(SV_HREG, 0);  // 初始化赋值
-    mb.addHreg(RESET_HREG,0);
+    mb.Hreg(FAN_HREG, 0);  // 初始化赋值
+    mb.Hreg(SV_HREG, 0);   // 初始化赋值
+    mb.addHreg(RESET_HREG, 0);
 }
 
 void loop()
