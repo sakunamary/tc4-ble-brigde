@@ -195,13 +195,13 @@ void TASK_Modbus_From_CMD(void *pvParameters)
         init_status= false;
     }else {
 
-        if (last_SV != mb.Hreg(FAN_HREG)){
-            last_SV =mb.Hreg(FAN_HREG); //同步数据
-            Serial_in.printf("IO3,%d\r\n",last_SV);     
+        if (last_FAN != mb.Hreg(FAN_HREG)){
+            last_FAN =mb.Hreg(FAN_HREG); //同步数据
+            Serial_in.printf("IO3,%d\r\n",last_FAN);     
         } 
         if (last_PWR != mb.Hreg(HEAT_HREG)){
             last_PWR =mb.Hreg(HEAT_HREG); //同步数据
-            Serial_in.printf("IO3,%d\r\n",last_SV);     
+            Serial_in.printf("IO1,%d\r\n",last_PWR);     
         } 
 
     }
