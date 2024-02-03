@@ -112,7 +112,6 @@ void TASK_SendCMDtoTC4(void *pvParameters)
 
     for (;;)
     {
-
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
 
         if (xQueueReceive(queueCMD, &CMDBuffer, timeOut) == pdPASS)
@@ -142,14 +141,11 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
     {        // for loop
         if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS)
         {
-
             TC4_data_String = String((char *)serialReadBuffer);
             // Serial.print(TC4_data_String);
-
             if (!TC4_data_String.startsWith("#"))
             { //
                 StringTokenizer TC4_Data(TC4_data_String, ",");
-
                 while (TC4_Data.hasNext())
                 {
                     Data[i] = TC4_Data.nextToken().toDouble(); // prints the next token in the string
@@ -175,13 +171,6 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
-
-    /*
-    const uint16_t HEAT_HREG = 3003;
-    const uint16_t FAN_HREG = 3004;
-    const uint16_t SV_HREG = 3005;
-    */
-
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
