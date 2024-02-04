@@ -27,6 +27,10 @@ const uint16_t HEAT_HREG = 3003;
 const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
 const uint16_t RESET_HREG = 3006;
+const uint16_t PID_P_HREG = 3007;
+const uint16_t PID_I_HREG = 3008;
+const uint16_t PID_D_HREG = 3009;
+const uint16_t PID_HREG = 3010;
 
 char ap_name[30];
 uint8_t macAddr[6];
@@ -163,6 +167,7 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
 // 从PC artisan 获取命令后转为TC4格式命令再发送到TC4
 void TASK_Modbus_From_CMD(void *pvParameters)
 {
+
     (void)pvParameters;
     bool init_status = true;
     uint16_t last_SV;
@@ -174,7 +179,16 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-
+/*
+const uint16_t HEAT_HREG = 3003;
+const uint16_t FAN_HREG = 3004;
+const uint16_t SV_HREG = 3005;
+const uint16_t RESET_HREG = 3006;
+const uint16_t PID_P_HREG = 3007;
+const uint16_t PID_I_HREG = 3008;
+const uint16_t PID_D_HREG = 3009;
+const uint16_t PID_HREG = 3010;
+*/
         if (init_status)
         {
             last_SV = mb.Hreg(SV_HREG);    // 初始化赋值
@@ -200,6 +214,10 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                 Serial_in.printf("reset\r\n");
                 mb.Hreg(RESET_HREG, 0);
             }
+            // if (last_SV !=mb.Hreg(SV_HREG))
+            // {
+            //     Serial_in.printf("PID,SV,%d\r\n", last_SV);
+            // }
         }
     }
 }
@@ -225,7 +243,7 @@ void setup()
 #endif
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
-    xTaskCreatePinnedToCore(
+xTaskCreatePinnedToCore(
         TASK_ReadDataFormTC4, "DataFormTC4" // 测量电池电源数据，每分钟测量一次
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
@@ -300,7 +318,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        2048 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024*4 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -330,6 +348,11 @@ void setup()
     mb.addHreg(FAN_HREG);
     mb.addHreg(SV_HREG);
     mb.addHreg(RESET_HREG);
+    mb.addHreg(PID_P_HREG);
+    mb.addHreg(PID_I_HREG);
+    mb.addHreg(PID_D_HREG);
+    mb.addHreg(PID_HREG);
+
 
     mb.Hreg(BT_HREG, 0);   // 初始化赋值
     mb.Hreg(ET_HREG, 0);   // 初始化赋值
@@ -337,6 +360,10 @@ void setup()
     mb.Hreg(FAN_HREG, 0);  // 初始化赋值
     mb.Hreg(SV_HREG, 0);   // 初始化赋值
     mb.addHreg(RESET_HREG, 0);
+    mb.addHreg(PID_P_HREG, 0);
+    mb.addHreg(PID_I_HREG, 0);
+    mb.addHreg(PID_D_HREG, 0);
+    mb.addHreg(PID_HREG,0);
 }
 
 void loop()
