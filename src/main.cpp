@@ -31,6 +31,7 @@ const uint16_t PID_P_HREG = 3007;
 const uint16_t PID_I_HREG = 3008;
 const uint16_t PID_D_HREG = 3009;
 const uint16_t PID_HREG = 3010;
+const uint16_t PID_RUN_HREG = 3011;
 
 char ap_name[30];
 uint8_t macAddr[6];
@@ -214,10 +215,10 @@ const uint16_t PID_HREG = 3010;
                 Serial_in.printf("reset\r\n");
                 mb.Hreg(RESET_HREG, 0);
             }
-            // if (last_SV !=mb.Hreg(SV_HREG))
-            // {
-            //     Serial_in.printf("PID,SV,%d\r\n", last_SV);
-            // }
+            if (last_SV !=mb.Hreg(SV_HREG))
+            {
+                Serial_in.printf("PID,SV,%d\r\n", last_SV);
+            }
         }
     }
 }
