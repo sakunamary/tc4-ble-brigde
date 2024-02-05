@@ -10,7 +10,7 @@
 
 // spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer
 HardwareSerial Serial_in(2);
-SemaphoreHandle_t xThermoDataMutex = NULL;
+SemaphoreHandle_t   xserialReadBufferMutex = NULL;
 
 String IpAddressToString(const IPAddress &ipAddress); // 转换IP地址格式
 String processor(const String &var);                  // webpage function
@@ -50,15 +50,19 @@ uint8_t serialReadBuffer[BUFFER_SIZE];
 void TASK_ReadDataFormTC4(void *pvParameters)
 {
 
-    const TickType_t timeOut = 1500;
+    const TickType_t timeOut =  1000/ portTICK_PERIOD_MS;
     while (true)
     {
         if (Serial_in.available())
         {
-            auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-            SerialBT.write(serialReadBuffer, count);
+        if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+        {
+            auto count = Serial_in.readBytesUntil('\n',serialReadBuffer, BUFFER_SIZE);
+            SerialBT.write(serialReadBuffer, count+1);
             xQueueSend(queueTC4_data, &serialReadBuffer, timeOut); // 发送数据到Queue
             memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
+        }
+            xSemaphoreGive(xserialReadBufferMutex);
         }
         vTaskDelay(20);
     }
@@ -91,7 +95,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     TickType_t xLastWakeTime;
     const TickType_t timeOut = 1500;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
-    uint8_t CMDBuffer[BUFFER_SIZE] = "READ;\r\n";
+    uint8_t CMDBuffer[BUFFER_SIZE] = "READ\n";
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
@@ -146,8 +150,12 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
     {        // for loop
         if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS)
         {
+            if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+            {
             TC4_data_String = String((char *)serialReadBuffer);
-            // Serial.print(TC4_data_String);
+             //Serial.print(TC4_data_String);
+             }
+            xSemaphoreGive(xserialReadBufferMutex);
             if (!TC4_data_String.startsWith("#"))
             { //
                 StringTokenizer TC4_Data(TC4_data_String, ",");
@@ -159,7 +167,12 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
                 mb.Hreg(BT_HREG, Data[1] * 100); // 初始化赋值
                 mb.Hreg(ET_HREG, Data[2] * 100); // 初始化赋值
                 // Serial.println(Data[1]);
+
+                //
                 i = 0;
+            }
+            else {
+                Serial.println(TC4_data_String);
             }
         }
         vTaskDelay(50);
@@ -204,16 +217,16 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             if (last_FAN != mb.Hreg(FAN_HREG))
             {
                 last_FAN = mb.Hreg(FAN_HREG); // 同步数据
-                Serial_in.printf("IO3,%d\r\n", last_FAN);
+                Serial_in.printf("DCFAN,%d\n", last_FAN);
             }
             if (last_PWR != mb.Hreg(HEAT_HREG))
             {
                 last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
-                Serial_in.printf("OT1,%d\r\n", last_PWR);
+                Serial_in.printf("OT1,%d\n", last_PWR);
             }
             if (mb.Hreg(RESET_HREG) != 0)
             {
-                Serial_in.printf("RESET\r\n");
+                Serial_in.printf("RESET\n");
                 mb.Hreg(RESET_HREG, 0);
             }
 
@@ -222,29 +235,31 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                 if (pid_on_status == false)
                 {                                   // PID ON 当前状态是关
                     pid_on_status = true;           // 同步状态量
-                    Serial_in.printf("PID,T,%d,%d,%d\r\n", 
-                    int(mb.Hreg(PID_P_HREG)/100),
-                    int(mb.Hreg(PID_I_HREG)/100),
-                    int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
-                    Serial_in.printf("PID,ON\r\n"); // 发送指令
-
+                 //   Serial_in.printf("PID,T,%d,%d,%d\r\n", 
+                 //   int(mb.Hreg(PID_P_HREG)/100),
+                 //   int(mb.Hreg(PID_I_HREG)/100),
+                 //   int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
                     last_SV = mb.Hreg(SV_HREG); // 同步数据
-                    Serial_in.printf("PID,SV,%d\r\n", last_SV);
-                    
+                    Serial_in.printf("PID,SV,%d\n", last_SV);
+                    vTaskDelay(50);
+                    Serial_in.printf("PID,ON\n"); // 发送指令                   
                 }
                 else{ //状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
                         if (last_SV != mb.Hreg(SV_HREG))
                         {
                             last_SV = mb.Hreg(SV_HREG); // 同步数据
-                            Serial_in.printf("PID,SV,%d\r\n", last_SV);
+                            Serial_in.printf("PID,SV,%d\n", last_SV);
                         }
                 }
             }
-            else
-            {                                    // PID OFF
-                Serial_in.printf("PID,OFF\r\n"); // 发送指令
-                pid_on_status = false;           // 同步状态量
-                mb.Hreg(PID_HREG, 0);            // 寄存器置0
+            else //PID OFF
+            {    
+                 if (pid_on_status == true)   {
+                    Serial_in.printf("PID,OFF\n"); // 发送指令
+                    pid_on_status = false;           // 同步状态量
+                    mb.Hreg(PID_HREG, 0);            // 寄存器置0
+                    mb.Hreg(SV_HREG,last_SV);
+                 }   
             }
         }
     }
@@ -252,6 +267,8 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 
 void setup()
 {
+  xserialReadBufferMutex = xSemaphoreCreateMutex();
+
     Serial.begin(BAUDRATE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
