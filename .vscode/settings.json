@@ -10,6 +10,7 @@
         "regex": "cpp",
         "*.tcc": "cpp",
         "bitset": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "unordered_set": "cpp"
     }
 }

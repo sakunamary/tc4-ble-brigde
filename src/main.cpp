@@ -227,6 +227,10 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                     int(mb.Hreg(PID_I_HREG)/100),
                     int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
                     Serial_in.printf("PID,ON\r\n"); // 发送指令
+
+                    last_SV = mb.Hreg(SV_HREG); // 同步数据
+                    Serial_in.printf("PID,SV,%d\r\n", last_SV);
+                    
                 }
                 else{ //状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
                         if (last_SV != mb.Hreg(SV_HREG))
@@ -343,13 +347,6 @@ void setup()
     Serial.printf("\nTASK=6:TASK_Modbus_From_CMD OK \n");
 #endif
 
-    // Init BLE Serial
-    SerialBT.begin(ap_name, true, 2);
-    SerialBT.setTimeout(10);
-#if defined(DEBUG_MODE)
-    Serial.printf("\nSerial_BT setup OK\n");
-#endif
-
     // 初始化网络服务
 
     WiFi.macAddress(macAddr);
@@ -358,7 +355,7 @@ void setup()
     sprintf(ap_name, "MatchBox-%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
     if( WiFi.softAP(ap_name, "12345678")){// defualt IP address :192.168.4.1 password min 8 digis
 #if defined(DEBUG_MODE)
-    Serial.printf("\nWiFi AP Started\n");
+    Serial.printf("\nWiFi AP: %s Started\n",ap_name);
 #endif
     } else {
 #if defined(DEBUG_MODE)
@@ -366,10 +363,12 @@ void setup()
 #endif  
     vTaskDelay(500);
     }
-
-
-
-
+    // Init BLE Serial
+    SerialBT.begin(ap_name, true, 2);
+    SerialBT.setTimeout(10);
+#if defined(DEBUG_MODE)
+    Serial.printf("\nSerial_BT setup OK\n");
+#endif
 
 // Init Modbus-TCP
 #if defined(DEBUG_MODE)
