@@ -31,7 +31,7 @@ const uint16_t PID_P_HREG = 3007;
 const uint16_t PID_I_HREG = 3008;
 const uint16_t PID_D_HREG = 3009;
 const uint16_t PID_HREG = 3010;
-const uint16_t PID_RUN_HREG = 3011;
+//const uint16_t PID_RUN_HREG = 3011;
 
 char ap_name[30];
 uint8_t macAddr[6];
@@ -171,6 +171,8 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 
     (void)pvParameters;
     bool init_status = true;
+    bool pid_on_status = false;
+    bool pid_run_status = false;
     uint16_t last_SV;
     uint16_t last_FAN;
     uint16_t last_PWR;
@@ -180,16 +182,15 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-/*
-const uint16_t HEAT_HREG = 3003;
-const uint16_t FAN_HREG = 3004;
-const uint16_t SV_HREG = 3005;
-const uint16_t RESET_HREG = 3006;
-const uint16_t PID_P_HREG = 3007;
-const uint16_t PID_I_HREG = 3008;
-const uint16_t PID_D_HREG = 3009;
-const uint16_t PID_HREG = 3010;
-*/
+        /*
+        const uint16_t SV_HREG = 3005;
+        const uint16_t RESET_HREG = 3006;
+        const uint16_t PID_P_HREG = 3007;
+        const uint16_t PID_I_HREG = 3008;
+        const uint16_t PID_D_HREG = 3009;
+        const uint16_t PID_HREG = 3010; defualt = 0
+        //const uint16_t PID_RUN_HREG = 3011; defualt = 0
+        */
         if (init_status)
         {
             last_SV = mb.Hreg(SV_HREG);    // 初始化赋值
@@ -212,12 +213,34 @@ const uint16_t PID_HREG = 3010;
             }
             if (mb.Hreg(RESET_HREG) != 0)
             {
-                Serial_in.printf("reset\r\n");
+                Serial_in.printf("RESET\r\n");
                 mb.Hreg(RESET_HREG, 0);
             }
-            if (last_SV !=mb.Hreg(SV_HREG))
-            {
-                Serial_in.printf("PID,SV,%d\r\n", last_SV);
+
+            if (mb.Hreg(PID_HREG) == 1)
+            { // PID ON
+                if (pid_on_status == false)
+                {                                   // PID ON 当前状态是关
+                    pid_on_status = true;           // 同步状态量
+                    Serial_in.printf("PID,T,%d,%d,%d\r\n", 
+                    int(mb.Hreg(PID_P_HREG)/100),
+                    int(mb.Hreg(PID_I_HREG)/100),
+                    int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
+                    Serial_in.printf("PID,ON\r\n"); // 发送指令
+                }
+                else{ //状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
+                        if (last_SV != mb.Hreg(SV_HREG))
+                        {
+                            last_SV = mb.Hreg(SV_HREG); // 同步数据
+                            Serial_in.printf("PID,SV,%d\r\n", last_SV);
+                        }
+                }
+            }
+            else
+            {                                    // PID OFF
+                Serial_in.printf("PID,OFF\r\n"); // 发送指令
+                pid_on_status = false;           // 同步状态量
+                mb.Hreg(PID_HREG, 0);            // 寄存器置0
             }
         }
     }
@@ -231,20 +254,10 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("\nSerial Started\n");
 #endif
-    // 初始化网络服务
 
-    WiFi.macAddress(macAddr);
-    // Serial_debug.println("WiFi.mode(AP):");
-    WiFi.mode(WIFI_AP);
-    sprintf(ap_name, "MatchBox-%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
-    WiFi.softAP(ap_name, "12345678"); // defualt IP address :192.168.4.1 password min 8 digis
-
-#if defined(DEBUG_MODE)
-    Serial.printf("\nWiFi AP Started\n");
-#endif
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
-xTaskCreatePinnedToCore(
+    xTaskCreatePinnedToCore(
         TASK_ReadDataFormTC4, "DataFormTC4" // 测量电池电源数据，每分钟测量一次
         ,
         4096 // This stack size can be checked & adjusted by reading the Stack Highwater
@@ -319,7 +332,7 @@ xTaskCreatePinnedToCore(
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024*4 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 6 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -337,6 +350,27 @@ xTaskCreatePinnedToCore(
     Serial.printf("\nSerial_BT setup OK\n");
 #endif
 
+    // 初始化网络服务
+
+    WiFi.macAddress(macAddr);
+    // Serial_debug.println("WiFi.mode(AP):");
+    WiFi.mode(WIFI_AP);
+    sprintf(ap_name, "MatchBox-%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
+    if( WiFi.softAP(ap_name, "12345678")){// defualt IP address :192.168.4.1 password min 8 digis
+#if defined(DEBUG_MODE)
+    Serial.printf("\nWiFi AP Started\n");
+#endif
+    } else {
+#if defined(DEBUG_MODE)
+    Serial.printf("\nWiFi AP NOT OK YET...\n");
+#endif  
+    vTaskDelay(500);
+    }
+
+
+
+
+
 // Init Modbus-TCP
 #if defined(DEBUG_MODE)
     Serial.printf("\nStart Modbus-TCP  service OK\n");
@@ -353,18 +387,19 @@ xTaskCreatePinnedToCore(
     mb.addHreg(PID_I_HREG);
     mb.addHreg(PID_D_HREG);
     mb.addHreg(PID_HREG);
-
+    //mb.addHreg(PID_RUN_HREG);
 
     mb.Hreg(BT_HREG, 0);   // 初始化赋值
     mb.Hreg(ET_HREG, 0);   // 初始化赋值
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 0);  // 初始化赋值
     mb.Hreg(SV_HREG, 0);   // 初始化赋值
-    mb.addHreg(RESET_HREG, 0);
-    mb.addHreg(PID_P_HREG, 0);
-    mb.addHreg(PID_I_HREG, 0);
-    mb.addHreg(PID_D_HREG, 0);
-    mb.addHreg(PID_HREG,0);
+    mb.Hreg(RESET_HREG, 0);// 初始化赋值
+    mb.Hreg(PID_P_HREG, 0);// 初始化赋值
+    mb.Hreg(PID_I_HREG, 0);// 初始化赋值
+    mb.Hreg(PID_D_HREG, 0);// 初始化赋值
+    mb.Hreg(PID_HREG, 0);// 初始化赋值
+    //mb.Hreg(PID_RUN_HREG);// 初始化赋值
 }
 
 void loop()
