@@ -210,7 +210,10 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             last_SV = mb.Hreg(SV_HREG);    // 初始化赋值
             last_FAN = mb.Hreg(FAN_HREG);  // 初始化赋值
             last_PWR = mb.Hreg(HEAT_HREG); // 初始化赋值
+            mb.Hreg(PID_HREG,0);
+            mb.Hreg(FAN_HREG,0);
             init_status = false;
+            pid_on_status == false;
         }
         else
         {
@@ -222,7 +225,7 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 
             if (last_FAN != mb.Hreg(FAN_HREG))
             {   
-                Serial_in.printf("DCFAN,%d\n", last_FAN);
+                Serial_in.printf("DCFAN,%d\n", mb.Hreg(FAN_HREG));
                 last_FAN = mb.Hreg(FAN_HREG); // 同步数据
                 
             }
@@ -255,7 +258,7 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             {
                 if (last_PWR != mb.Hreg(HEAT_HREG)) // 状态：mb.Hreg(PID_HREG) == 0 手动控制火力
                 {
-                    Serial_in.printf("OT1,%d\n", last_PWR);
+                    Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
                     last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
                 }
                     mb.Hreg(SV_HREG, last_SV*10);
