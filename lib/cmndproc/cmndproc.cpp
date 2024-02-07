@@ -124,9 +124,11 @@ const char* CmndInterp::checkCmnd(String inCmnd) {
   char c[MAX_CMND_LEN];
   int i=0;
   uint8_t len = strlen( cmndstr );
- while( i <= inCmnd.length())
- {
+  
+for (i=0;i<inCmnd.length();i++)
+{
    c[i]=inCmnd[i];
+     Serial.print(c[i]);
     // check for newline, buffer overflow
     if( ( c[i] == '\n' ) || ( len == MAX_CMND_LEN ) ) {
       // report input back to calling program
@@ -135,13 +137,12 @@ const char* CmndInterp::checkCmnd(String inCmnd) {
       processCommand();
       cmndstr[0] = '\0'; // empty the buffer
       return result;
-
     } // end if
     else if( c[i] != '\r' ) { // skip CR, otherwise append character
       cmndstr[len] = toupper(c[i]);
       cmndstr[len+1] = '\0';
     } // end else
-    i++;
+
   }// end while
   return NULL;
 }

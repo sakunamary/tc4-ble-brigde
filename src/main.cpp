@@ -40,7 +40,6 @@ BleSerial SerialBT;
 // ModbusIP object
 ModbusIP mb;
 
-
 CmndInterp ci(DELIM); // command interpreter object
 
 uint8_t bleReadBuffer[BUFFER_SIZE];
@@ -51,7 +50,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
 {
 
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
-    for(;;)
+    for (;;)
     {
         if (Serial_in.available())
         {
@@ -72,7 +71,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
 void TASK_CMD_From_BLE(void *pvParameters)
 {
     const TickType_t timeOut = 1000;
-    for(;;)
+    for (;;)
     {
         if (SerialBT.available())
         {
@@ -171,7 +170,7 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
                 // PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
                 if ((mb.Hreg(PID_HREG) == 1) && (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS))
                 {
-                    mb.Hreg(HEAT_HREG, Data[3]);//获取赋值
+                    mb.Hreg(HEAT_HREG, Data[3]); // 获取赋值
                 }
                 xSemaphoreGive(xserialReadBufferMutex);
                 //
@@ -179,10 +178,13 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
             }
             else
             {
-                //StringTokenizer TC4_Data(TC4_data_String, ",");
+                // StringTokenizer TC4_Data(TC4_data_String, ",");
 
-                //ci.checkCmnd();
-                Serial.println(TC4_data_String);
+                TC4_data_String.replace("#DATA_OUT,", "");
+                TC4_data_String.trim();
+                TC4_data_String.concat('\n');
+                ci.checkCmnd(TC4_data_String);
+                //Serial.println(TC4_data_String);
             }
         }
         vTaskDelay(50);
@@ -342,7 +344,7 @@ void setup()
         ,
         NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
-        NULL// Running Core decided by FreeRTOS,let core0 run wifi and BT
+        NULL // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
 
 #if defined(DEBUG_MODE)
@@ -368,7 +370,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 10// This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 10 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -380,13 +382,6 @@ void setup()
 #endif
 
 
-
-    // Init BLE Serial
-    SerialBT.begin(ap_name, true, 2);
-    SerialBT.setTimeout(10);
-#if defined(DEBUG_MODE)
-    Serial.printf("\nSerial_BT setup OK\n");
-#endif
 
     // 初始化网络服务
     WiFi.macAddress(macAddr);
@@ -407,6 +402,13 @@ void setup()
         vTaskDelay(500);
     }
 
+
+    // Init BLE Serial
+    SerialBT.begin(ap_name, true, 2);
+    SerialBT.setTimeout(10);
+#if defined(DEBUG_MODE)
+    Serial.printf("\nSerial_BT setup OK\n");
+#endif
 // Init Modbus-TCP
 #if defined(DEBUG_MODE)
     Serial.printf("\nStart Modbus-TCP  service OK\n");
@@ -435,14 +437,13 @@ void setup()
     // mb.Hreg(PID_P_HREG, 0); // 初始化赋值
     // mb.Hreg(PID_I_HREG, 0); // 初始化赋值
     // mb.Hreg(PID_D_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_HREG, 0);   // 初始化赋值
+    mb.Hreg(PID_HREG, 0); // 初始化赋值
     // mb.Hreg(PID_RUN_HREG);// 初始化赋值
 
     ////////////////////////////////////////////////////////////////
 
     ci.addCommand(&pid);
-
-
+    ci.addCommand(&io3);
 }
 
 void loop()

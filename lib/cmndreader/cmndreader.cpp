@@ -44,6 +44,7 @@
 // define command objects (all are derived from CmndBase)
 
 pidCmnd pid;
+io3Cmnd io3;
 
 // ----------------------------- pidCmnd
 // constructor
@@ -65,9 +66,10 @@ boolean pidCmnd::doCommand(CmndParser *pars)
         }
         else if (strcmp(pars->paramStr(1), "OFF") == 0)
         {
-
+            Serial.print("testing PID OFF");
             return true;
         }
+        /*
         else if (strcmp(pars->paramStr(1), "TIME") == 0)
         {
             return true;
@@ -92,10 +94,7 @@ boolean pidCmnd::doCommand(CmndParser *pars)
 
             return true;
         }
-        else if (strcmp(pars->paramStr(1), "SV") == 0)
-        {
 
-        }
         else if (strcmp(pars->paramStr(1), "CT") == 0)
         {
 
@@ -103,9 +102,9 @@ boolean pidCmnd::doCommand(CmndParser *pars)
         }
         else if (strcmp(pars->paramStr(1), "CHAN") == 0)
         {
-   /*       
+
             pid_chan = atoi(pars->paramStr(2));
-*/  
+
 
             return true;
         }
@@ -116,6 +115,10 @@ boolean pidCmnd::doCommand(CmndParser *pars)
             // myPID.SetOutputLimits(lower_limit, upper_limit); // set output limits to user defined limits
 
             return true;
+        }*/
+        else if (strcmp(pars->paramStr(1), "SV") == 0)
+        {
+            return true;
         }
     }
     else
@@ -124,3 +127,28 @@ boolean pidCmnd::doCommand(CmndParser *pars)
     }
 }
 
+// ----------------------------- io3Cmnd
+// constructor
+io3Cmnd::io3Cmnd() : CmndBase(IO3_CMD)
+{
+}
+
+// execute the IO3 command
+// IO3;ddd\n
+
+boolean io3Cmnd::doCommand(CmndParser *pars)
+{
+
+    if (strcmp(keyword, pars->cmndName()) == 0)
+    {
+        uint8_t len = strlen(pars->paramStr(1));
+        if (len > 0)
+        {
+        }
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
