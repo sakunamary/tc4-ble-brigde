@@ -10,6 +10,7 @@
             "includePath": [
                 "/Users/work/Documents/GitHub/tc4-ble-brigde/include",
                 "/Users/work/Documents/GitHub/tc4-ble-brigde/src",
+                "/Users/work/Documents/GitHub/tc4-ble-brigde/lib/cmndproc",
                 "/Users/work/Documents/GitHub/tc4-ble-brigde/lib/StringTokenizer",
                 "/Users/work/Documents/GitHub/tc4-ble-brigde/.pio/libdeps/esp32/modbus-esp8266/src",
                 "/Users/work/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
@@ -245,6 +246,7 @@
                 "path": [
                     "/Users/work/Documents/GitHub/tc4-ble-brigde/include",
                     "/Users/work/Documents/GitHub/tc4-ble-brigde/src",
+                    "/Users/work/Documents/GitHub/tc4-ble-brigde/lib/cmndproc",
                     "/Users/work/Documents/GitHub/tc4-ble-brigde/lib/StringTokenizer",
                     "/Users/work/Documents/GitHub/tc4-ble-brigde/.pio/libdeps/esp32/modbus-esp8266/src",
                     "/Users/work/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",

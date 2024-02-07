@@ -5,6 +5,7 @@
 #include <HardwareSerial.h>
 
 #include <StringTokenizer.h>
+#include <cmndreader.h>
 
 #include <ModbusIP_ESP8266.h>
 
@@ -38,6 +39,9 @@ const int BUFFER_SIZE = 64;
 BleSerial SerialBT;
 // ModbusIP object
 ModbusIP mb;
+
+
+CmndInterp ci(DELIM); // command interpreter object
 
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
@@ -175,6 +179,8 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
             }
             else
             {
+                //StringTokenizer TC4_Data(TC4_data_String, ",");
+                
                 Serial.println(TC4_data_String);
             }
         }
@@ -432,6 +438,10 @@ void setup()
     // mb.Hreg(PID_RUN_HREG);// 初始化赋值
 
     ////////////////////////////////////////////////////////////////
+
+    ci.addCommand(&pid);
+
+
 }
 
 void loop()
