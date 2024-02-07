@@ -8,17 +8,17 @@
 
 #include <ModbusIP_ESP8266.h>
 
+
 // spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer
 HardwareSerial Serial_in(2);
 SemaphoreHandle_t xserialReadBufferMutex = NULL;
 
-String IpAddressToString(const IPAddress &ipAddress); // 转换IP地址格式
-String processor(const String &var);                  // webpage function
 
 String local_IP;
 
 QueueHandle_t queueCMD = xQueueCreate(8, sizeof(char[64]));
 QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[64]));
+
 
 // Modbus Registers Offsets
 const uint16_t BT_HREG = 3001;
@@ -31,7 +31,7 @@ const uint16_t PID_P_HREG = 3007;
 const uint16_t PID_I_HREG = 3008;
 const uint16_t PID_D_HREG = 3009;
 const uint16_t PID_HREG = 3010;
-// const uint16_t PID_RUN_HREG = 3011;
+
 
 char ap_name[30];
 uint8_t macAddr[6];
@@ -362,7 +362,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 6 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 8 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -378,7 +378,7 @@ void setup()
     WiFi.macAddress(macAddr);
     // Serial_debug.println("WiFi.mode(AP):");
     WiFi.mode(WIFI_AP);
-    sprintf(ap_name, "MatchBox-%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
+    sprintf(ap_name, "MBox-%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
     if (WiFi.softAP(ap_name, "12345678"))
     { // defualt IP address :192.168.4.1 password min 8 digis
 #if defined(DEBUG_MODE)
@@ -392,6 +392,7 @@ void setup()
 #endif
         vTaskDelay(500);
     }
+
     // Init BLE Serial
     SerialBT.begin(ap_name, true, 2);
     SerialBT.setTimeout(10);
@@ -433,4 +434,5 @@ void setup()
 void loop()
 {
     mb.task();
+
 }
