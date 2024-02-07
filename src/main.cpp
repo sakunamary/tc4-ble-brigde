@@ -20,6 +20,7 @@ QueueHandle_t queueCMD = xQueueCreate(8, sizeof(char[64]));
 QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[64]));
 
 
+
 // Modbus Registers Offsets
 const uint16_t BT_HREG = 3001;
 const uint16_t ET_HREG = 3002;
@@ -43,8 +44,10 @@ BleSerial SerialBT;
 // ModbusIP object
 ModbusIP mb;
 
+
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
+
 
 // Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
 void TASK_ReadDataFormTC4(void *pvParameters)
@@ -362,7 +365,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 8 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 10 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -404,6 +407,7 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("\nStart Modbus-TCP  service OK\n");
 #endif
+
     mb.server(502); // Start Modbus IP //default port :502
     // Add SENSOR_IREG register - Use addIreg() for analog Inputs
     mb.addHreg(BT_HREG);
@@ -429,6 +433,10 @@ void setup()
     mb.Hreg(PID_D_HREG, 0); // 初始化赋值
     mb.Hreg(PID_HREG, 0);   // 初始化赋值
     // mb.Hreg(PID_RUN_HREG);// 初始化赋值
+
+
+////////////////////////////////////////////////////////////////
+
 }
 
 void loop()
