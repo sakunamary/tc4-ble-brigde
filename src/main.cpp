@@ -8,18 +8,14 @@
 
 #include <ModbusIP_ESP8266.h>
 
-
 // spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer
 HardwareSerial Serial_in(2);
 SemaphoreHandle_t xserialReadBufferMutex = NULL;
-
 
 String local_IP;
 
 QueueHandle_t queueCMD = xQueueCreate(8, sizeof(char[64]));
 QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[64]));
-
-
 
 // Modbus Registers Offsets
 const uint16_t BT_HREG = 3001;
@@ -33,35 +29,32 @@ const uint16_t PID_I_HREG = 3008;
 const uint16_t PID_D_HREG = 3009;
 const uint16_t PID_HREG = 3010;
 
-
 char ap_name[30];
 uint8_t macAddr[6];
 double Data[6]; // 温度数据
 
-const int BUFFER_SIZE = 32;
+const int BUFFER_SIZE = 64;
 
 BleSerial SerialBT;
 // ModbusIP object
 ModbusIP mb;
 
-
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
-
-// Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
+// Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_SendCMDtoTC4
 void TASK_ReadDataFormTC4(void *pvParameters)
 {
 
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
-    while (true)
+    for(;;)
     {
         if (Serial_in.available())
         {
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
                 auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE);
-                SerialBT.write(serialReadBuffer, count + 1);
+                SerialBT.println(String((char *)serialReadBuffer));
                 xQueueSend(queueTC4_data, &serialReadBuffer, timeOut); // 发送数据到Queue
                 memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
             }
@@ -75,7 +68,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
 void TASK_CMD_From_BLE(void *pvParameters)
 {
     const TickType_t timeOut = 1000;
-    while (true)
+    for(;;)
     {
         if (SerialBT.available())
         {
@@ -144,7 +137,7 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
 
     (void)pvParameters;
     // const  TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1500;
+    const TickType_t timeOut = 1500 / portTICK_PERIOD_MS;
     int i = 0;
     uint8_t serialReadBuffer[BUFFER_SIZE];
     String TC4_data_String;
@@ -169,8 +162,14 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
                 }
                 mb.Hreg(BT_HREG, Data[1] * 100); // 初始化赋值
                 mb.Hreg(ET_HREG, Data[2] * 100); // 初始化赋值
-                // Serial.println(Data[1]);
 
+                // 状态：mb.Hreg(PID_HREG) == 1 的时候
+                // PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
+                if ((mb.Hreg(PID_HREG) == 1) && (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS))
+                {
+                    mb.Hreg(HEAT_HREG, Data[3]);//获取赋值
+                }
+                xSemaphoreGive(xserialReadBufferMutex);
                 //
                 i = 0;
             }
@@ -189,7 +188,6 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     (void)pvParameters;
     bool init_status = true;
     bool pid_on_status = false;
-    bool pid_run_status = false;
     uint16_t last_SV;
     uint16_t last_FAN;
     uint16_t last_PWR;
@@ -213,8 +211,8 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             last_SV = mb.Hreg(SV_HREG);    // 初始化赋值
             last_FAN = mb.Hreg(FAN_HREG);  // 初始化赋值
             last_PWR = mb.Hreg(HEAT_HREG); // 初始化赋值
-            mb.Hreg(PID_HREG,0);
-            mb.Hreg(FAN_HREG,0);
+            mb.Hreg(PID_HREG, 0);
+            mb.Hreg(FAN_HREG, 0);
             init_status = false;
             pid_on_status == false;
         }
@@ -227,33 +225,32 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             }
 
             if (last_FAN != mb.Hreg(FAN_HREG))
-            {   
+            {
                 Serial_in.printf("DCFAN,%d\n", mb.Hreg(FAN_HREG));
                 last_FAN = mb.Hreg(FAN_HREG); // 同步数据
-                
             }
 
             if (mb.Hreg(PID_HREG) == 1)
-            {                                        // PID ON
-                if (pid_on_status == false)          // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
-                {                                    // PID ON 当前状态是关
-                    pid_on_status = true;            // 同步状态量
-                                                     //   Serial_in.printf("PID,T,%d,%d,%d\r\n",
-                                                     //   int(mb.Hreg(PID_P_HREG)/100),
-                                                     //   int(mb.Hreg(PID_I_HREG)/100),
-                                                     //   int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
-                    Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG)/10);
-                    last_SV = mb.Hreg(SV_HREG)/10; // 同步数据
+            {                               // PID ON
+                if (pid_on_status == false) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
+                {                           // PID ON 当前状态是关
+                    pid_on_status = true;   // 同步状态量
+                                            //   Serial_in.printf("PID,T,%d,%d,%d\r\n",
+                                            //   int(mb.Hreg(PID_P_HREG)/100),
+                                            //   int(mb.Hreg(PID_I_HREG)/100),
+                                            //   int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
+                    Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG) / 10);
+                    last_SV = mb.Hreg(SV_HREG) / 10; // 同步数据
 
                     vTaskDelay(50);
                     Serial_in.printf("PID,ON\n"); // 发送指令
                 }
                 else
                 { // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
-                    if (last_SV != mb.Hreg(SV_HREG)/10)
+                    if (last_SV != mb.Hreg(SV_HREG) / 10)
                     {
-                        Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG)/10);
-                        last_SV = mb.Hreg(SV_HREG)/10; // 同步数据
+                        Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG) / 10);
+                        last_SV = mb.Hreg(SV_HREG) / 10; // 同步数据
                     }
                 }
             }
@@ -264,13 +261,12 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                     Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
                     last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
                 }
-                    mb.Hreg(SV_HREG, last_SV*10);
+                mb.Hreg(SV_HREG, last_SV * 10);
                 if (pid_on_status == true)
                 {                                  // 状态：mb.Hreg(PID_HREG) == 0 and pid_on_status == true
                     Serial_in.printf("PID,OFF\n"); // 发送指令
                     pid_on_status = false;         // 同步状态量
                     mb.Hreg(PID_HREG, 0);          // 寄存器置0
-
                 }
             }
         }
@@ -332,14 +328,14 @@ void setup()
 #endif
 
     // Setup tasks to run independently.
-    xTaskCreatePinnedToCore(
+    xTaskCreate(
         TASK_Send_READ_CMDtoTC4, "READ_CMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
         1024 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
-        NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+        NULL// Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
 
 #if defined(DEBUG_MODE)
@@ -347,14 +343,14 @@ void setup()
 #endif
 
     // Setup tasks to run independently.
-    xTaskCreatePinnedToCore(
+    xTaskCreate(
         TASK_SendCMDtoTC4, "SendCMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 6 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 8 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
-        NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+        NULL // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
 
 #if defined(DEBUG_MODE)
@@ -365,9 +361,9 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 10 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 10// This stack size can be checked & adjusted by reading the Stack Highwater
         ,
-        NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
         NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
@@ -376,8 +372,16 @@ void setup()
     Serial.printf("\nTASK=6:TASK_Modbus_From_CMD OK \n");
 #endif
 
-    // 初始化网络服务
 
+
+    // Init BLE Serial
+    SerialBT.begin(ap_name, true, 2);
+    SerialBT.setTimeout(10);
+#if defined(DEBUG_MODE)
+    Serial.printf("\nSerial_BT setup OK\n");
+#endif
+
+    // 初始化网络服务
     WiFi.macAddress(macAddr);
     // Serial_debug.println("WiFi.mode(AP):");
     WiFi.mode(WIFI_AP);
@@ -396,13 +400,6 @@ void setup()
         vTaskDelay(500);
     }
 
-    // Init BLE Serial
-    SerialBT.begin(ap_name, true, 2);
-    SerialBT.setTimeout(10);
-#if defined(DEBUG_MODE)
-    Serial.printf("\nSerial_BT setup OK\n");
-#endif
-
 // Init Modbus-TCP
 #if defined(DEBUG_MODE)
     Serial.printf("\nStart Modbus-TCP  service OK\n");
@@ -416,9 +413,9 @@ void setup()
     mb.addHreg(FAN_HREG);
     mb.addHreg(SV_HREG);
     mb.addHreg(RESET_HREG);
-    mb.addHreg(PID_P_HREG);
-    mb.addHreg(PID_I_HREG);
-    mb.addHreg(PID_D_HREG);
+    // mb.addHreg(PID_P_HREG);
+    // mb.addHreg(PID_I_HREG);
+    // mb.addHreg(PID_D_HREG);
     mb.addHreg(PID_HREG);
     // mb.addHreg(PID_RUN_HREG);
 
@@ -428,19 +425,16 @@ void setup()
     mb.Hreg(FAN_HREG, 0);   // 初始化赋值
     mb.Hreg(SV_HREG, 0);    // 初始化赋值
     mb.Hreg(RESET_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_P_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_I_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_D_HREG, 0); // 初始化赋值
+    // mb.Hreg(PID_P_HREG, 0); // 初始化赋值
+    // mb.Hreg(PID_I_HREG, 0); // 初始化赋值
+    // mb.Hreg(PID_D_HREG, 0); // 初始化赋值
     mb.Hreg(PID_HREG, 0);   // 初始化赋值
     // mb.Hreg(PID_RUN_HREG);// 初始化赋值
 
-
-////////////////////////////////////////////////////////////////
-
+    ////////////////////////////////////////////////////////////////
 }
 
 void loop()
 {
     mb.task();
-
 }
