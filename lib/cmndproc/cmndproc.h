@@ -106,7 +106,7 @@ class CmndInterp {
     void setCmndStr( const char* cstr ); // alternative to reading from serial port
     uint8_t addCommand( CmndBase* newCmnd ); // add a new command to the list
     // reads characters until newline, then execute processCommand
-    virtual const char* checkSerial(); // return non NULL if a command was processed
+    virtual const char* checkCmnd(String inCmnd); // return non NULL if a command was processed
     // step through linked list of commands; quit after there was a match
     virtual void processCommand();
   protected:

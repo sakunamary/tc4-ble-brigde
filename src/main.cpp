@@ -181,6 +181,7 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
             {
                 //StringTokenizer TC4_Data(TC4_data_String, ",");
                 
+                //ci.checkCmnd();
                 Serial.println(TC4_data_String);
             }
         }
