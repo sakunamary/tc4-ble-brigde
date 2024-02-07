@@ -40,7 +40,7 @@
 #ifndef CMNDREADER_H
 #define CMNDREADER_H
 
-#include <cmndproc.h>
+#include "cmndproc.h"
 
 
 // ----------------------- commands
