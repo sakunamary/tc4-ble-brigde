@@ -71,20 +71,14 @@ boolean pidCmnd::doCommand(CmndParser *pars)
         if (strcmp(pars->paramStr(1), "ON") == 0)
         {
             mb.Hreg(PID_HREG, 1);       // Hreg 设置为1
-            if (pid_on_status == false) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
-            {                           // PID ON 当前状态是关
-                pid_on_status = true;   // 同步状态量
-            }
+            pid_on_status = true;   // 同步状态量
+
             return true;
         }
         else if (strcmp(pars->paramStr(1), "OFF") == 0)
         {
             mb.Hreg(PID_HREG, 0);      // Hreg 设置为1
-            if (pid_on_status == true) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
-            {                          // PID ON 当前状态是关
-                pid_on_status = false; // 同步状态量
-            }
-
+            pid_on_status = false;   // 同步状态量
             return true;
         }
         else if (strcmp(pars->paramStr(1), "OUT") == 0)

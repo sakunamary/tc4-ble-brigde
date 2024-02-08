@@ -25,9 +25,9 @@ const uint16_t HEAT_HREG = 3003;
 const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
 const uint16_t RESET_HREG = 3006;
-const uint16_t PID_P_HREG = 3007;
-const uint16_t PID_I_HREG = 3008;
-const uint16_t PID_D_HREG = 3009;
+// const uint16_t PID_P_HREG = 3007;
+// const uint16_t PID_I_HREG = 3008;
+// const uint16_t PID_D_HREG = 3009;
 const uint16_t PID_HREG = 3010;
 
 char ap_name[30];
@@ -41,7 +41,7 @@ bool pid_on_status = false;
 uint16_t last_SV;
 uint16_t last_FAN;
 uint16_t last_PWR;
-uint16_t last_PWR_manual;
+//uint16_t last_PWR_manual;
 
 BleSerial SerialBT;
 // ModbusIP object
@@ -197,22 +197,17 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
+
+
+
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        /*
-        const uint16_t SV_HREG = 3005;
-        const uint16_t RESET_HREG = 3006;
-        const uint16_t PID_P_HREG = 3007;
-        const uint16_t PID_I_HREG = 3008;
-        const uint16_t PID_D_HREG = 3009;
-        const uint16_t PID_HREG = 3010; defualt = 0
-        //const uint16_t PID_RUN_HREG = 3011; defualt = 0
-        */
+
         if (init_status)
-        {
+        { 
             last_SV = mb.Hreg(SV_HREG);    // 初始化赋值
             last_FAN = mb.Hreg(FAN_HREG);  // 初始化赋值
             last_PWR = mb.Hreg(HEAT_HREG); // 初始化赋值
@@ -236,8 +231,8 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             }
 
             if (mb.Hreg(PID_HREG) == 1)
-            {                               // PID ON
-                if (pid_on_status == false) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
+            {    // PID ON                                          
+                if ( pid_on_status == false ) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
                 {                           // PID ON 当前状态是关
                     pid_on_status = true;   // 同步状态量
                                             //   Serial_in.printf("PID,T,%d,%d,%d\r\n",
@@ -246,36 +241,39 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                                             //   int(mb.Hreg(PID_D_HREG)/100));//将artisan数据传到TC4
                     Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG) / 10);
                     last_SV = mb.Hreg(SV_HREG) / 10; // 同步数据
-                    last_PWR_manual=mb.Hreg(HEAT_HREG); //
+                    Serial.printf("\n 4:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
 
                     vTaskDelay(50);
                     Serial_in.printf("PID,ON\n"); // 发送指令
-                }
-                else
+                }else
                 { // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
                     if (last_SV != mb.Hreg(SV_HREG) / 10)
                     {
                         Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG) / 10);
                         last_SV = mb.Hreg(SV_HREG) / 10; // 同步数据
                     }
+               Serial.printf("\n 5:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
                 }
             }
             else // PID OFF
             {
+     //Serial.printf("\n 3:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
                 if (last_PWR != mb.Hreg(HEAT_HREG)) // 状态：mb.Hreg(PID_HREG) == 0 手动控制火力
                 {
                     Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
-                    last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
+                    //last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
                 }
                 last_SV = mb.Hreg(SV_HREG)/10;
-                //mb.Hreg(SV_HREG, last_SV * 10);
 
-                if (pid_on_status == true)
+                if (pid_on_status == true )
                 {                                  // 状态：mb.Hreg(PID_HREG) == 0 and pid_on_status == true
                     Serial_in.printf("PID,OFF\n"); // 发送指令
                     pid_on_status = false;         // 同步状态量
-                    mb.Hreg(HEAT_HREG,last_PWR_manual);  // 回读PID ON之前的OT1数据
-                    mb.Hreg(PID_HREG, 0);          // 寄存器置0
+                    mb.Hreg(HEAT_HREG,last_PWR);  // 回读PID ON之前的OT1数据
+     //Serial.printf("\n 1:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
+                } else {
+                last_PWR=mb.Hreg(HEAT_HREG);
+     //Serial.printf("\n 2:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
                 }
             }
         }
@@ -370,7 +368,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 10 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 12 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
