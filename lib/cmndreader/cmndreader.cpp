@@ -45,6 +45,13 @@
 
 pidCmnd pid;
 io3Cmnd io3;
+ot1Cmnd ot1;
+
+const uint16_t PID_HREG = 3010;
+const uint16_t HEAT_HREG = 3003;
+const uint16_t FAN_HREG = 3004;
+const uint16_t SV_HREG = 3005;
+const uint16_t RESET_HREG = 3006;
 
 // ----------------------------- pidCmnd
 // constructor
@@ -57,18 +64,35 @@ pidCmnd::pidCmnd() : CmndBase(PID_CMD)
 
 boolean pidCmnd::doCommand(CmndParser *pars)
 {
-    //Serial.println((char *)pars);
+    // Serial.println((char *)pars);
 
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
         if (strcmp(pars->paramStr(1), "ON") == 0)
         {
-
+            mb.Hreg(PID_HREG, 1);       // Hreg 设置为1
+            if (pid_on_status == false) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
+            {                           // PID ON 当前状态是关
+                pid_on_status = true;   // 同步状态量
+            }
             return true;
         }
         else if (strcmp(pars->paramStr(1), "OFF") == 0)
         {
-            Serial.print("testing PID OFF");
+            mb.Hreg(PID_HREG, 0);      // Hreg 设置为1
+            if (pid_on_status == true) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
+            {                          // PID ON 当前状态是关
+                pid_on_status = false; // 同步状态量
+            }
+
+            return true;
+        }
+        else if (strcmp(pars->paramStr(1), "OUT") == 0)
+        {
+            // uint16_t CHAN_TEMP = atoi(pars->paramStr(2));
+            uint16_t PID_OUT_PWR = atoi(pars->paramStr(3));
+            mb.Hreg(HEAT_HREG, PID_OUT_PWR);
+
             return true;
         }
         /*
@@ -120,12 +144,14 @@ boolean pidCmnd::doCommand(CmndParser *pars)
         }*/
         else if (strcmp(pars->paramStr(1), "SV") == 0)
         {
+             uint8_t PID_SV = atoi(pars->paramStr(2));
+             mb.Hreg(SV_HREG, PID_SV);  
             return true;
         }
-    }
-    else
-    {
-        return false;
+        else
+        {
+            return false;
+        }
     }
 }
 
@@ -143,10 +169,32 @@ boolean io3Cmnd::doCommand(CmndParser *pars)
 
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
-        uint8_t len = strlen(pars->paramStr(1));
-        if (len > 0)
-        {
-        }
+        uint16_t FAN_OUT = atoi(pars->paramStr(1));
+        mb.Hreg(FAN_HREG, FAN_OUT);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// ----------------------------- io3Cmnd
+// constructor
+ot1Cmnd::ot1Cmnd() : CmndBase(OT1_CMD)
+{
+}
+
+// execute the OT1 command
+// IO1;ddd\n
+
+boolean ot1Cmnd::doCommand(CmndParser *pars)
+{
+
+    if (strcmp(keyword, pars->cmndName()) == 0)
+    {
+        uint16_t HEAT_OUT = atoi(pars->paramStr(1));
+        mb.Hreg(HEAT_HREG, HEAT_OUT);
         return true;
     }
     else

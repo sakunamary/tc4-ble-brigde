@@ -36,6 +36,12 @@ double Data[6]; // 温度数据
 
 const int BUFFER_SIZE = 64;
 
+bool init_status = true;
+bool pid_on_status = false;
+uint16_t last_SV;
+uint16_t last_FAN;
+uint16_t last_PWR;
+
 BleSerial SerialBT;
 // ModbusIP object
 ModbusIP mb;
@@ -177,11 +183,8 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
             }
             else
             {
-                // StringTokenizer TC4_Data(TC4_data_String, ",");
-
                 TC4_data_String.replace("#DATA_OUT,", "");
                 ci.checkCmnd(TC4_data_String);
-                //Serial.println(TC4_data_String);
             }
         }
         vTaskDelay(50);
@@ -192,11 +195,6 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 {
 
     (void)pvParameters;
-    bool init_status = true;
-    bool pid_on_status = false;
-    uint16_t last_SV;
-    uint16_t last_FAN;
-    uint16_t last_PWR;
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
@@ -232,7 +230,7 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 
             if (last_FAN != mb.Hreg(FAN_HREG))
             {
-                Serial_in.printf("DCFAN,%d\n", mb.Hreg(FAN_HREG));
+                Serial_in.printf("IO3,%d\n", mb.Hreg(FAN_HREG));
                 last_FAN = mb.Hreg(FAN_HREG); // 同步数据
             }
 
@@ -267,11 +265,15 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                     Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
                     last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
                 }
+
                 mb.Hreg(SV_HREG, last_SV * 10);
+                last_SV=mb.Hreg(SV_HREG)/10;
+                
                 if (pid_on_status == true)
                 {                                  // 状态：mb.Hreg(PID_HREG) == 0 and pid_on_status == true
                     Serial_in.printf("PID,OFF\n"); // 发送指令
                     pid_on_status = false;         // 同步状态量
+                     mb.Hreg(HEAT_HREG,last_PWR);  // 同步数据
                     mb.Hreg(PID_HREG, 0);          // 寄存器置0
                 }
             }
@@ -441,6 +443,7 @@ void setup()
 
     ci.addCommand(&pid);
     ci.addCommand(&io3);
+    ci.addCommand(&ot1);
 }
 
 void loop()

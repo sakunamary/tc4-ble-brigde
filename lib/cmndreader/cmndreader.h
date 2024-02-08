@@ -41,21 +41,30 @@
 #define CMNDREADER_H
 
 #include "cmndproc.h"
+#include <ModbusIP_ESP8266.h>
 
 // ----------------------- commands
 #define PID_CMD "PID" // turn PID ON or OFF
 #define IO3_CMD "IO3" // 0 to 100 percent PWM 5V output on IO3
+#define OT1_CMD "OT1" // 0 to 100 percent PWM 5V output on IO3
 
 // forward declarations
 class pidCmnd;
 class io3Cmnd;
+class ot1Cmnd;
 
 // external declarations of class objects
 
+extern ModbusIP mb;
 extern pidCmnd pid;
 extern io3Cmnd io3;
+extern ot1Cmnd ot1;
+
 
 // extern declarations for functions, variables in the main program
+extern bool pid_on_status;
+
+
 
 // class declarations for commands
 
@@ -73,4 +82,10 @@ public:
     virtual boolean doCommand(CmndParser *pars);
 };
 
+class ot1Cmnd : public CmndBase
+{
+public:
+    ot1Cmnd();
+    virtual boolean doCommand(CmndParser *pars);
+};
 #endif
