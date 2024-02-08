@@ -234,7 +234,7 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             {    // PID ON                                          
                 if ( pid_on_status == false ) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
                 {                           // PID ON 当前状态是关
-                    pid_on_status = true;   // 同步状态量
+                    pid_on_status = !pid_on_status;   // 同步状态量
                                             //   Serial_in.printf("PID,T,%d,%d,%d\r\n",
                                             //   int(mb.Hreg(PID_P_HREG)/100),
                                             //   int(mb.Hreg(PID_I_HREG)/100),
@@ -257,7 +257,7 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             }
             else // PID OFF
             {
-     //Serial.printf("\n 3:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
+     Serial.printf("\n 3:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
                 if (last_PWR != mb.Hreg(HEAT_HREG)) // 状态：mb.Hreg(PID_HREG) == 0 手动控制火力
                 {
                     Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
@@ -268,12 +268,12 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                 if (pid_on_status == true )
                 {                                  // 状态：mb.Hreg(PID_HREG) == 0 and pid_on_status == true
                     Serial_in.printf("PID,OFF\n"); // 发送指令
-                    pid_on_status = false;         // 同步状态量
+                    pid_on_status = !pid_on_status;   // 同步状态量
                     mb.Hreg(HEAT_HREG,last_PWR);  // 回读PID ON之前的OT1数据
-     //Serial.printf("\n 1:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
+     Serial.printf("\n 1:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
                 } else {
                 last_PWR=mb.Hreg(HEAT_HREG);
-     //Serial.printf("\n 2:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
+     Serial.printf("\n 2:PID_HREG:%d,pid_on_status:%d:init:%d",mb.Hreg(PID_HREG),pid_on_status,init_status);
                 }
             }
         }
