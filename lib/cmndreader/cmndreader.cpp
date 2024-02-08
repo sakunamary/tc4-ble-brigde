@@ -145,7 +145,7 @@ boolean pidCmnd::doCommand(CmndParser *pars)
         else if (strcmp(pars->paramStr(1), "SV") == 0)
         {
              uint8_t PID_SV = atoi(pars->paramStr(2));
-             mb.Hreg(SV_HREG, PID_SV);  
+             mb.Hreg(SV_HREG, PID_SV*10);  
             return true;
         }
         else
@@ -170,7 +170,7 @@ boolean io3Cmnd::doCommand(CmndParser *pars)
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
         uint16_t FAN_OUT = atoi(pars->paramStr(1));
-        mb.Hreg(FAN_HREG, FAN_OUT);
+        mb.Hreg(FAN_HREG, FAN_OUT*10);
         return true;
     }
     else
