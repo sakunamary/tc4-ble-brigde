@@ -47,7 +47,7 @@ pidCmnd pid;
 io3Cmnd io3;
 ot1Cmnd ot1;
 
-const uint16_t PID_HREG = 3010;
+const uint16_t PID_HREG = 3007;
 const uint16_t HEAT_HREG = 3003;
 const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
@@ -69,17 +69,15 @@ boolean pidCmnd::doCommand(CmndParser *pars)
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
         if (strcmp(pars->paramStr(1), "ON") == 0)
-        {
-            mb.Hreg(PID_HREG, 1);       // Hreg 设置为1
-                    pid_on_status = !pid_on_status;   // 同步状态量
-
+        {         
+           mb.Hreg(PID_HREG, 1);       // Hreg 设置为1
 
             return true;
         }
         else if (strcmp(pars->paramStr(1), "OFF") == 0)
         {
             mb.Hreg(PID_HREG, 0);      // Hreg 设置为1
-                    pid_on_status = !pid_on_status;   // 同步状态量
+            //pid_on_status = !pid_on_status;   // 同步状态量
 
             return true;
         }
@@ -138,12 +136,12 @@ boolean pidCmnd::doCommand(CmndParser *pars)
 
             return true;
         }*/
-        else if (strcmp(pars->paramStr(1), "SV") == 0)
-        {
-             uint8_t PID_SV = atoi(pars->paramStr(2));
-             mb.Hreg(SV_HREG, PID_SV*10);  
-            return true;
-        }
+        // else if (strcmp(pars->paramStr(1), "SV") == 0)
+        // {
+        //      uint8_t PID_SV = atoi(pars->paramStr(2));
+        //      mb.Hreg(SV_HREG, PID_SV*10);  
+        //     return true;
+        // }
         else
         {
             return false;
@@ -166,7 +164,7 @@ boolean io3Cmnd::doCommand(CmndParser *pars)
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
         uint16_t FAN_OUT = atoi(pars->paramStr(1));
-        mb.Hreg(FAN_HREG, FAN_OUT*10);
+        mb.Hreg(FAN_HREG, FAN_OUT);
         return true;
     }
     else
