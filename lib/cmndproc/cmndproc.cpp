@@ -121,40 +121,31 @@ void CmndInterp::processCommand() {
 
 // read data from the serial port
 const char* CmndInterp::checkCmnd(String inCmnd) {
-  char c[MAX_CMND_LEN];
+  char c;
   int i=0;
   uint8_t len = strlen( cmndstr );
-  
-for (i=0;i<inCmnd.length();i++)
+  inCmnd.concat('\n');
+while(i<inCmnd.length()+1)
 {
-   c[i]=inCmnd[i];
-     Serial.print(c[i]);
+   c=inCmnd[i];
     // check for newline, buffer overflow
-    if( ( c[i] == '\n' ) || ( len == MAX_CMND_LEN ) ) {
+    if( ( c == '\n' ) || ( len == MAX_CMND_LEN ) ) {
       // report input back to calling program
       strncpy( result, cmndstr, MAX_RESULT_LEN );
       result[MAX_RESULT_LEN] = '\0'; // for safety
       processCommand();
       cmndstr[0] = '\0'; // empty the buffer
+      i=0;
       return result;
     } // end if
-    else if( c[i] != '\r' ) { // skip CR, otherwise append character
-      cmndstr[len] = toupper(c[i]);
-      cmndstr[len+1] = '\0';
+    else if( c != '\r' ) { // skip CR, otherwise append character
+      cmndstr[i] = toupper(c);
+      cmndstr[i+1] = '\0';
     } // end else
-
+   i++;
   }// end while
   return NULL;
 }
-
-// string pp = "dagah";
-//  char p[8];
-//  int i;
-//  for( i=0;i<pp.length();i++)
-//     p[i] = pp[i];
-//   p[i] = '\0';
-//  printf("%s\n",p);
-//  cout<<p;
 
 // input a string directly (not using serial read)
 void CmndInterp::setCmndStr( const char* cstr ) {

@@ -152,7 +152,6 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
                 TC4_data_String = String((char *)serialReadBuffer);
-                // Serial.print(TC4_data_String);
             }
             xSemaphoreGive(xserialReadBufferMutex);
             if (!TC4_data_String.startsWith("#"))
@@ -181,8 +180,6 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
                 // StringTokenizer TC4_Data(TC4_data_String, ",");
 
                 TC4_data_String.replace("#DATA_OUT,", "");
-                TC4_data_String.trim();
-                TC4_data_String.concat('\n');
                 ci.checkCmnd(TC4_data_String);
                 //Serial.println(TC4_data_String);
             }

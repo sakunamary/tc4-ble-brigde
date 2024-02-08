@@ -57,6 +57,8 @@ pidCmnd::pidCmnd() : CmndBase(PID_CMD)
 
 boolean pidCmnd::doCommand(CmndParser *pars)
 {
+    //Serial.println((char *)pars);
+
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
         if (strcmp(pars->paramStr(1), "ON") == 0)
