@@ -47,12 +47,11 @@ pidCmnd pid;
 io3Cmnd io3;
 ot1Cmnd ot1;
 
-const uint16_t PID_HREG = 3007;
 const uint16_t HEAT_HREG = 3003;
 const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
 const uint16_t RESET_HREG = 3006;
-
+const uint16_t PID_HREG = 3007;
 // ----------------------------- pidCmnd
 // constructor
 pidCmnd::pidCmnd() : CmndBase(PID_CMD)
@@ -69,16 +68,13 @@ boolean pidCmnd::doCommand(CmndParser *pars)
     if (strcmp(keyword, pars->cmndName()) == 0)
     {
         if (strcmp(pars->paramStr(1), "ON") == 0)
-        {         
-           mb.Hreg(PID_HREG, 1);       // Hreg 设置为1
-
+        {
+            mb.Hreg(PID_HREG, 1); // Hreg 设置为1
             return true;
         }
         else if (strcmp(pars->paramStr(1), "OFF") == 0)
         {
-            mb.Hreg(PID_HREG, 0);      // Hreg 设置为1
-            //pid_on_status = !pid_on_status;   // 同步状态量
-
+            mb.Hreg(PID_HREG, 0); // Hreg 设置为1
             return true;
         }
         else if (strcmp(pars->paramStr(1), "OUT") == 0)
@@ -86,7 +82,13 @@ boolean pidCmnd::doCommand(CmndParser *pars)
             // uint16_t CHAN_TEMP = atoi(pars->paramStr(2));
             uint16_t PID_OUT_PWR = atoi(pars->paramStr(3));
             mb.Hreg(HEAT_HREG, PID_OUT_PWR);
-
+            return true;
+        }
+        else if (strcmp(pars->paramStr(1), "SV") == 0)
+        {
+            // 持续发送sv数据，TC4输出：#DATA_OUT，PID，SV，val
+            uint8_t PID_SV = atoi(pars->paramStr(2));
+            mb.Hreg(SV_HREG, PID_SV * 10);
             return true;
         }
         /*
@@ -136,12 +138,7 @@ boolean pidCmnd::doCommand(CmndParser *pars)
 
             return true;
         }*/
-        // else if (strcmp(pars->paramStr(1), "SV") == 0)
-        // {
-        //      uint8_t PID_SV = atoi(pars->paramStr(2));
-        //      mb.Hreg(SV_HREG, PID_SV*10);  
-        //     return true;
-        // }
+
         else
         {
             return false;

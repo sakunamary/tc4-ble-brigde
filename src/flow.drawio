@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="djuoKwj-kMu_pSdnhJvP" name="第 1 页">
-        <mxGraphModel dx="2097" dy="2246" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+        <mxGraphModel dx="2258" dy="2246" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -177,7 +177,7 @@
                         <mxPoint x="1200" y="40" as="targetPoint"/>
                     </mxGeometry>
                 </mxCell>
-                <mxCell id="50" value="3.增加Artisan的Modbus SV 写入操作（小程序相同原理）" style="whiteSpace=wrap;html=1;rounded=1;" parent="1" vertex="1">
+                <mxCell id="50" value="3.增加Artisan的Modbus SV 写入操作（小程序相同原理）" style="whiteSpace=wrap;html=1;rounded=1;fillColor=#d80073;fontColor=#ffffff;strokeColor=#A50040;" parent="1" vertex="1">
                     <mxGeometry x="570" y="-100" width="120" height="60" as="geometry"/>
                 </mxCell>
                 <mxCell id="51" value="" style="endArrow=classic;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" parent="1" source="46" target="50" edge="1">
@@ -393,75 +393,6 @@
                 </mxCell>
                 <mxCell id="122" value="低优先度命令&lt;br&gt;Hreg变动&lt;br&gt;产生对应指令" style="whiteSpace=wrap;html=1;rounded=1;" parent="1" vertex="1">
                     <mxGeometry x="-200" y="1833.5" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="128" style="edgeStyle=none;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="126" target="127">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="126" value="PID_ON" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
-                    <mxGeometry x="390" y="2450" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="131" value="" style="edgeStyle=none;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="127" target="136">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint x="550" y="2610" as="targetPoint"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="135" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="131">
-                    <mxGeometry x="0.0333" y="-3" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="133" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="127" target="132">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="134" value="0" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="133">
-                    <mxGeometry x="-0.1333" y="1" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="127" value="Hreg&lt;br&gt;3010" style="rhombus;whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="410" y="2570" width="80" height="80" as="geometry"/>
-                </mxCell>
-                <mxCell id="145" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="132" target="144">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="132" value="CHECK&lt;br&gt;PID PARM" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="230" y="2580" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="138" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="136" target="137">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="142" value="1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="138">
-                    <mxGeometry x="-0.1778" y="-3" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="141" style="edgeStyle=none;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="136" target="139">
-                    <mxGeometry relative="1" as="geometry">
-                        <Array as="points"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="143" value="0" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="141">
-                    <mxGeometry x="-0.0545" y="-2" relative="1" as="geometry">
-                        <mxPoint as="offset"/>
-                    </mxGeometry>
-                </mxCell>
-                <mxCell id="136" value="PID_RUN&lt;br&gt;Hreg&lt;br&gt;3011" style="rhombus;whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="560" y="2570" width="130" height="80" as="geometry"/>
-                </mxCell>
-                <mxCell id="137" value="发送PID.SV指令到TC4" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="565" y="2720" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="139" value="wait" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="800" y="2580" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="147" value="" style="edgeStyle=none;html=1;" edge="1" parent="1" source="144" target="146">
-                    <mxGeometry relative="1" as="geometry"/>
-                </mxCell>
-                <mxCell id="144" value="读取 P I D" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="230" y="2720" width="120" height="60" as="geometry"/>
-                </mxCell>
-                <mxCell id="146" value="发送到TC4" style="whiteSpace=wrap;html=1;rounded=1;" vertex="1" parent="1">
-                    <mxGeometry x="230" y="2860" width="120" height="60" as="geometry"/>
                 </mxCell>
             </root>
         </mxGraphModel>

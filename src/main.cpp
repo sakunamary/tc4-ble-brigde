@@ -1,3 +1,45 @@
+// mian.cpp
+
+// TC4 配套使用的模块，将TC4指令转成modbus-TCP发送到artisan和转成BLE数据接口与小程序交互
+// 硬件:ESP32/ESP32-s芯片，
+// IO :D16  与TC4交互的串口RXD
+//     D17  与TC4交互的串口TXD
+//
+// *** BSD License ***
+// ------------------------------------------------------------------------------------------
+// Copyright (c) 2011, MLG Properties, LLC
+// All rights reserved.
+//
+// Contributor:  Jim Gallt
+//
+// Redistribution and use in source and binary forms, with or without modification, are
+// permitted provided that the following conditions are met:
+//
+//   Redistributions of source code must retain the above copyright notice, this list of
+//   conditions and the following disclaimer.
+//
+//   Redistributions in binary form must reproduce the above copyright notice, this list
+//   of conditions and the following disclaimer in the documentation and/or other materials
+//   provided with the distribution.
+//
+//   Neither the name of the copyright holder(s) nor the names of its contributors may be
+//   used to endorse or promote products derived from this software without specific prior
+//   written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+// THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// ------------------------------------------------------------------------------------------
+
+// Revision history:
+// 20240209 version 1.1.0 : 完成第一个固定milestone
+
 #include <Arduino.h>
 #include "config.h"
 
@@ -9,14 +51,12 @@
 
 #include <ModbusIP_ESP8266.h>
 
-// spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer
-HardwareSerial Serial_in(2);
-SemaphoreHandle_t xserialReadBufferMutex = NULL;
+HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
+SemaphoreHandle_t xserialReadBufferMutex = NULL;                           // Mutex for TC4数据输出时写入队列的数据
+QueueHandle_t queueCMD = xQueueCreate(8, sizeof(char[BUFFER_SIZE]));       // 发送到TC4的命令队列
+QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[BUFFER_SIZE])); // 接受TC4发出的反馈数据队列
 String local_IP;
-
-QueueHandle_t queueCMD = xQueueCreate(8, sizeof(char[64]));
-QueueHandle_t queueTC4_data = xQueueCreate(10, sizeof(char[64]));
 
 // Modbus Registers Offsets
 const uint16_t BT_HREG = 3001;
@@ -29,16 +69,14 @@ const uint16_t PID_HREG = 3007;
 
 char ap_name[30];
 uint8_t macAddr[6];
-double Data[6]; // 温度数据
-
-const int BUFFER_SIZE = 64;
+double Data[6]; // TC4输出的温度数据：ambient,chan1,chan2,heater duty, fan duty, SV。共6路数据
 
 bool init_status = true;
 bool pid_on_status = false;
+
 uint16_t last_SV;
 uint16_t last_FAN;
 uint16_t last_PWR;
-// uint16_t last_PWR_manual;
 
 BleSerial SerialBT;
 // ModbusIP object
@@ -49,10 +87,9 @@ CmndInterp ci(DELIM); // command interpreter object
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
-// Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_SendCMDtoTC4
+// Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
 void TASK_ReadDataFormTC4(void *pvParameters)
 {
-
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
     for (;;)
     {
@@ -62,7 +99,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
             {
                 auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE);
                 SerialBT.println(String((char *)serialReadBuffer));
-                xQueueSend(queueTC4_data, &serialReadBuffer, timeOut); // 发送数据到Queue
+                xQueueSend(queueTC4_data, &serialReadBuffer, timeOut);
                 memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
             }
             xSemaphoreGive(xserialReadBufferMutex);
@@ -71,7 +108,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
     }
 }
 
-// Task  for Reading BLE
+// Task  for Reading BLE 模块读取SerialBT的数据 queueCMD 传递给 TASK_SendCMDtoTC4，实现小程序通过蓝牙发送TC4指令到TC4功能
 void TASK_CMD_From_BLE(void *pvParameters)
 {
     const TickType_t timeOut = 1000;
@@ -80,32 +117,26 @@ void TASK_CMD_From_BLE(void *pvParameters)
         if (SerialBT.available())
         {
             auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-            // Serial_in.write(bleReadBuffer, count);
-            // Serial.write(bleReadBuffer, count); //for debug
-
-            xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut); // 发送数据到Queue
+            xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut);
             memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
         }
         vTaskDelay(20);
     }
 }
 
-// Task for keep sending READ 指令写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
+// Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
 void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
-
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1500;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
     uint8_t CMDBuffer[BUFFER_SIZE] = "READ\n";
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
-
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        xQueueSend(queueCMD, &CMDBuffer, timeOut);
+        xQueueSend(queueCMD, &CMDBuffer, xIntervel);
     }
 }
 
@@ -113,26 +144,22 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 void TASK_SendCMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
-
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1000;
+    const TickType_t timeOut = 500;
     uint8_t CMDBuffer[BUFFER_SIZE];
-    String CMD_String;
 
-    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-
         if (xQueueReceive(queueCMD, &CMDBuffer, timeOut) == pdPASS)
         { // 从接收QueueCMD 接收指令
-            CMD_String = String((char *)CMDBuffer);
             Serial_in.print((char *)CMDBuffer);
             vTaskDelay(20);
         }
-    } // 发送数据到Queue
+    }
 }
 
 void TASK_Modbus_Send_DATA(void *pvParameters)
@@ -141,19 +168,17 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
     // 将数据serialReadBuffer 转换为字符串
     // tokenizer 将数据写入Data[]数组
     // Data[]数组 赋值给Hreg
-
     (void)pvParameters;
-    // const  TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
     int i = 0;
     uint8_t serialReadBuffer[BUFFER_SIZE];
     String TC4_data_String;
 
     for (;;) // A Task shall never return or exit.
     {        // for loop
-        if (xQueueReceive(queueTC4_data, &serialReadBuffer, timeOut) == pdPASS)
+        if (xQueueReceive(queueTC4_data, &serialReadBuffer, xIntervel) == pdPASS)
         {
-            if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 TC4_data_String = String((char *)serialReadBuffer);
             }
@@ -166,12 +191,10 @@ void TASK_Modbus_Send_DATA(void *pvParameters)
                     Data[i] = TC4_Data.nextToken().toDouble(); // prints the next token in the string
                     i++;
                 }
-                mb.Hreg(BT_HREG, Data[1] * 100); // 初始化赋值
-                mb.Hreg(ET_HREG, Data[2] * 100); // 初始化赋值
-
-                // 状态：mb.Hreg(PID_HREG) == 1 的时候
+                mb.Hreg(BT_HREG, Data[1] * 100); //
+                mb.Hreg(ET_HREG, Data[2] * 100); //
                 // PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
-                if ((mb.Hreg(PID_HREG) == 1) && (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS))
+                if ((mb.Hreg(PID_HREG) == 1) && (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS))
                 {
                     mb.Hreg(HEAT_HREG, Data[3]); // 获取赋值
                 }
@@ -200,18 +223,17 @@ void TASK_Modbus_From_CMD(void *pvParameters)
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-
         if (init_status)
         {
-            last_FAN = mb.Hreg(FAN_HREG);  // 初始化赋值
-            last_PWR = mb.Hreg(HEAT_HREG); // 初始化赋值
+            last_FAN = mb.Hreg(FAN_HREG);
+            last_PWR = mb.Hreg(HEAT_HREG);
             mb.Hreg(PID_HREG, 0);
             mb.Hreg(FAN_HREG, 0);
             init_status = false;
             pid_on_status == false;
         }
         else
-        {
+        { // RESET timer和风门时随时手动控制
             if (mb.Hreg(RESET_HREG) != 0)
             {
                 Serial_in.printf("RESET\n");
@@ -221,33 +243,39 @@ void TASK_Modbus_From_CMD(void *pvParameters)
             if (last_FAN != mb.Hreg(FAN_HREG))
             {
                 Serial_in.printf("IO3,%d\n", mb.Hreg(FAN_HREG));
-                last_FAN = mb.Hreg(FAN_HREG); // 同步数据
+                last_FAN = mb.Hreg(FAN_HREG);
             }
 
             if (mb.Hreg(PID_HREG) == 1)
             {                               // PID ON
                 if (pid_on_status == false) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
                 {
-                    //Serial.printf("\n 4:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status); // PID ON 当前状态是关
-                    pid_on_status = !pid_on_status; 
+#if defined(DEBUG_MODE)
+                    Serial.printf("\n 4:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status); // PID ON 当前状态是关
+#endif
+                    pid_on_status = !pid_on_status;
                     Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG) / 10);
                     vTaskDelay(50);
-                    Serial_in.printf("PID,ON\n"); // 发送指令  
+                    Serial_in.printf("PID,ON\n"); // 发送指令
                 }
                 else
                 { // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
-                    //Serial.printf("\n 6:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status);
+#if defined(DEBUG_MODE)
+                    Serial.printf("\n 6:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status);
+#endif
                     // 持续发送sv数据，TC4输出：#DATA_OUT，PID，OUT，温度，火力
                     Serial_in.printf("PID,SV,%d\n", mb.Hreg(SV_HREG) / 10);
                 }
             }
             else // PID OFF
             {
-                // last_SV = mb.Hreg(SV_HREG)/10;
                 if (pid_on_status == true)
                 {
                     // 状态：mb.Hreg(PID_HREG) == 0 and pid_on_status == true
-                    //Serial.printf("\n 1:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status);
+
+#if defined(DEBUG_MODE)
+                    Serial.printf("\n 1:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status);
+#endif
                     Serial_in.printf("PID,OFF\n"); // 发送指令
                     mb.Hreg(PID_HREG, 0);
                     mb.Hreg(HEAT_HREG, last_PWR); // 回读PID ON之前的OT1数据
@@ -258,11 +286,13 @@ void TASK_Modbus_From_CMD(void *pvParameters)
                 }
                 else
                 {
-                    //Serial.printf("\n 2:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status);
+#if defined(DEBUG_MODE)
+                    Serial.printf("\n 2:PID_HREG:%d,pid_on_status:%d:init:%d", mb.Hreg(PID_HREG), pid_on_status, init_status);
+#endif
                     if (last_PWR != mb.Hreg(HEAT_HREG))
                     {
-                    Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
-                    last_PWR = mb.Hreg(HEAT_HREG); // 同步数据
+                        Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
+                        last_PWR = mb.Hreg(HEAT_HREG);
                     }
                 }
             }
@@ -273,7 +303,6 @@ void TASK_Modbus_From_CMD(void *pvParameters)
 void setup()
 {
     xserialReadBufferMutex = xSemaphoreCreateMutex();
-
     Serial.begin(BAUDRATE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
@@ -286,7 +315,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_ReadDataFormTC4, "DataFormTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 4 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -300,7 +329,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_CMD_From_BLE, "CMD_From_BLE" // 测量电池电源数据，每分钟测量一次
         ,
-        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 4 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -343,7 +372,7 @@ void setup()
     xTaskCreate(
         TASK_SendCMDtoTC4, "SendCMDtoTC4" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 8 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 6 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 2 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -358,7 +387,7 @@ void setup()
     xTaskCreatePinnedToCore(
         TASK_Modbus_From_CMD, "TASK_Modbus_From_CMD" // 测量电池电源数据，每分钟测量一次
         ,
-        1024 * 12 // This stack size can be checked & adjusted by reading the Stack Highwater
+        1024 * 10 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
         NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
         ,
@@ -415,7 +444,7 @@ void setup()
     mb.Hreg(FAN_HREG, 0);   // 初始化赋值
     mb.Hreg(SV_HREG, 0);    // 初始化赋值
     mb.Hreg(RESET_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_HREG, 0); // 初始化赋值
+    mb.Hreg(PID_HREG, 0);   // 初始化赋值
 
     ////////////////////////////////////////////////////////////////
 
