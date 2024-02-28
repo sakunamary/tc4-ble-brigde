@@ -43,7 +43,7 @@
 #include <Arduino.h>
 #include "config.h"
 
-#include <BleSerial.h>
+//#include <BleSerial.h>
 #include <HardwareSerial.h>
 
 #include <StringTokenizer.h>
@@ -66,6 +66,10 @@ const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
 const uint16_t RESET_HREG = 3006;
 const uint16_t PID_HREG = 3007;
+const uint16_t PID_P_HREG = 3008;
+const uint16_t PID_I_HREG = 3009;
+const uint16_t PID_D_HREG = 3010;
+
 
 char ap_name[30];
 uint8_t macAddr[6];
@@ -78,13 +82,13 @@ uint16_t last_SV;
 uint16_t last_FAN;
 uint16_t last_PWR;
 
-BleSerial SerialBT;
+//BleSerial SerialBT;
 // ModbusIP object
 ModbusIP mb;
 
 CmndInterp ci(DELIM); // command interpreter object
 
-uint8_t bleReadBuffer[BUFFER_SIZE];
+//uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
 // Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
@@ -98,27 +102,11 @@ void TASK_ReadDataFormTC4(void *pvParameters)
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
                 auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE);
-                SerialBT.println(String((char *)serialReadBuffer));
+                //SerialBT.println(String((char *)serialReadBuffer));
                 xQueueSend(queueTC4_data, &serialReadBuffer, timeOut);
                 memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
             }
             xSemaphoreGive(xserialReadBufferMutex);
-        }
-        vTaskDelay(20);
-    }
-}
-
-// Task  for Reading BLE 模块读取SerialBT的数据 queueCMD 传递给 TASK_SendCMDtoTC4，实现小程序通过蓝牙发送TC4指令到TC4功能
-void TASK_CMD_From_BLE(void *pvParameters)
-{
-    const TickType_t timeOut = 1000;
-    for (;;)
-    {
-        if (SerialBT.available())
-        {
-            auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-            xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut);
-            memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
         }
         vTaskDelay(20);
     }
@@ -325,19 +313,6 @@ void setup()
     Serial.printf("\nTASK=1:DataFormTC4 OK\n");
 #endif
 
-    // Setup tasks to run independently.
-    xTaskCreatePinnedToCore(
-        TASK_CMD_From_BLE, "CMD_From_BLE" // 测量电池电源数据，每分钟测量一次
-        ,
-        1024 * 4 // This stack size can be checked & adjusted by reading the Stack Highwater
-        ,
-        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-        ,
-        NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
-    );
-#if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=2:ReadBLE OK\n");
-#endif
 
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
@@ -417,12 +392,12 @@ void setup()
         vTaskDelay(500);
     }
 
-    // Init BLE Serial
-    SerialBT.begin(ap_name, true, 2);
-    SerialBT.setTimeout(10);
-#if defined(DEBUG_MODE)
-    Serial.printf("\nSerial_BT setup OK\n");
-#endif
+//     // Init BLE Serial
+//     SerialBT.begin(ap_name, true, 2);
+//     SerialBT.setTimeout(10);
+// #if defined(DEBUG_MODE)
+//     Serial.printf("\nSerial_BT setup OK\n");
+// #endif
 // Init Modbus-TCP
 #if defined(DEBUG_MODE)
     Serial.printf("\nStart Modbus-TCP  service OK\n");
@@ -437,6 +412,9 @@ void setup()
     mb.addHreg(SV_HREG);
     mb.addHreg(RESET_HREG);
     mb.addHreg(PID_HREG);
+    mb.addHreg(PID_P_HREG);
+    mb.addHreg(PID_I_HREG);
+    mb.addHreg(PID_D_HREG);
 
     mb.Hreg(BT_HREG, 0);    // 初始化赋值
     mb.Hreg(ET_HREG, 0);    // 初始化赋值
@@ -445,6 +423,9 @@ void setup()
     mb.Hreg(SV_HREG, 0);    // 初始化赋值
     mb.Hreg(RESET_HREG, 0); // 初始化赋值
     mb.Hreg(PID_HREG, 0);   // 初始化赋值
+    mb.Hreg(PID_P_HREG, 500);   // 初始化赋值 X100
+    mb.Hreg(PID_I_HREG, 0);   // 初始化赋值 X100
+    mb.Hreg(PID_D_HREG, 10);   // 初始化赋值 X100
 
     ////////////////////////////////////////////////////////////////
 
