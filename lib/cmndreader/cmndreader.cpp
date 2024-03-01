@@ -52,6 +52,10 @@ const uint16_t FAN_HREG = 3004;
 const uint16_t SV_HREG = 3005;
 const uint16_t RESET_HREG = 3006;
 const uint16_t PID_HREG = 3007;
+const uint16_t PID_P_HREG = 3008;
+const uint16_t PID_I_HREG = 3009;
+const uint16_t PID_D_HREG = 3010;
+
 // ----------------------------- pidCmnd
 // constructor
 pidCmnd::pidCmnd() : CmndBase(PID_CMD)
