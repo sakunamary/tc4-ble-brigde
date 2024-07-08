@@ -7,7 +7,7 @@
 
 #define VERSION "1.1.0"
 
-//#define DEBUG_MODE
+#define DEBUG_MODE
 #define TX 17
 #define RX 16
 

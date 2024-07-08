@@ -99,6 +99,10 @@ void TASK_ReadDataFormTC4(void *pvParameters)
             {
                 auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE);
                 SerialBT.println(String((char *)serialReadBuffer));
+#if defined(DEBUG_MODE)
+                Serial.print("TC4 data:");
+                Serial.print(String((char *)serialReadBuffer));
+#endif
                 xQueueSend(queueTC4_data, &serialReadBuffer, timeOut);
                 memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
             }
@@ -158,6 +162,7 @@ void TASK_SendCMDtoTC4(void *pvParameters)
         { // 从接收QueueCMD 接收指令
             Serial_in.print((char *)CMDBuffer);
 #if defined(DEBUG_MODE)
+            Serial.print("To TC4 CMD:");
             Serial.print((char *)CMDBuffer);
 #endif
 
