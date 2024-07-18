@@ -101,7 +101,7 @@ void TASK_ReadDataFormTC4(void *pvParameters)
                 SerialBT.println(String((char *)serialReadBuffer));
 #if defined(DEBUG_MODE)
                 Serial.print("TC4 data:");
-                Serial.print(String((char *)serialReadBuffer));
+                Serial.println(String((char *)serialReadBuffer));
 #endif
                 xQueueSend(queueTC4_data, &serialReadBuffer, timeOut);
                 memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
@@ -115,14 +115,18 @@ void TASK_ReadDataFormTC4(void *pvParameters)
 // Task  for Reading BLE 模块读取SerialBT的数据 queueCMD 传递给 TASK_SendCMDtoTC4，实现小程序通过蓝牙发送TC4指令到TC4功能
 void TASK_CMD_From_BLE(void *pvParameters)
 {
-    const TickType_t timeOut = 1000;
+    const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
     for (;;)
     {
         if (SerialBT.available())
         {
-            auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-            xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut);
-            memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
+            if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+            {
+                auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+                xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut);
+                memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
         }
         vTaskDelay(20);
     }
@@ -134,13 +138,18 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     (void)pvParameters;
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
     uint8_t CMDBuffer[BUFFER_SIZE] = "READ\n";
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        xQueueSend(queueCMD, &CMDBuffer, xIntervel);
+        if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+        {
+            xQueueSend(queueCMD, &CMDBuffer, xIntervel);
+            xSemaphoreGive(xserialReadBufferMutex);
+        }
     }
 }
 
@@ -160,10 +169,10 @@ void TASK_SendCMDtoTC4(void *pvParameters)
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
         if (xQueueReceive(queueCMD, &CMDBuffer, timeOut) == pdPASS)
         { // 从接收QueueCMD 接收指令
-            Serial_in.print((char *)CMDBuffer);
+            Serial_in.println((char *)CMDBuffer);
 #if defined(DEBUG_MODE)
             Serial.print("To TC4 CMD:");
-            Serial.print((char *)CMDBuffer);
+            Serial.println((char *)CMDBuffer);
 #endif
 
             vTaskDelay(20);
