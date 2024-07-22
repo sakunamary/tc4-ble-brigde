@@ -85,13 +85,13 @@ BleSerial SerialBT;
 // CmndInterp ci(DELIM); // command interpreter object
 
 // Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，写入QueueTC4_data 传递给 TASK_Modbus_Send_DATA
-void TASK_ReadDataFormTC4(void *pvParameters) // task1
+void TASK_GetDataFormTC4(void *pvParameters) // task1
 {
-    uint8_t serialReadBuffer_task1[BUFFER_SIZE];
-    uint8_t serialReadBuffer_clean_task1[BUFFER_SIZE];
+    uint8_t serialReadBuffer[BUFFER_SIZE];
+    uint8_t BLEReadBuffer_clean[BUFFER_SIZE];
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
-    int j = 0;
-    String CMD_String;
+    // int j = 0;
+    // String CMD_String;
     String TC4_data_String;
 
     for (;;)
@@ -100,43 +100,60 @@ void TASK_ReadDataFormTC4(void *pvParameters) // task1
         {
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
-                auto count = Serial_in.readBytesUntil('\n', serialReadBuffer_task1, BUFFER_SIZE);
+                auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE);
 
-                TC4_data_String = String((char *)serialReadBuffer_task1);
-                while (j < TC4_data_String.length() && TC4_data_String.length() > 0)
-                {
-
-                    if (TC4_data_String[j] == '\n')
-                    {
-                        CMD_String += TC4_data_String[j]; // copy value
-                        TC4_data_String = "";
-                        j = 0; // clearing
-                        break; // 跳出循环
-                    }
-                    else
-                    {
-                        CMD_String += TC4_data_String[j]; // copy value
-                        j++;
-                    }
-                }
-                CMD_String.trim();
-                CMD_String.toUpperCase();
+                TC4_data_String = String((char *)serialReadBuffer);
+                TC4_data_String.trim();
+                TC4_data_String.toUpperCase();
+                TC4_data_String.concat('\n');
 #if defined(DEBUG_MODE)
                 Serial.print("TC4 data:");
-                Serial.println(CMD_String);
+                Serial.print(TC4_data_String);
 #endif
-                CMD_String = "";
-                memcpy(serialReadBuffer_clean_task1, &CMD_String, CMD_String.length());
-                xQueueSend(queueTC4_data, &serialReadBuffer_clean_task1, timeOut);
-                memset(serialReadBuffer_task1, '\0', sizeof(serialReadBuffer_task1));
-                memset(serialReadBuffer_clean_task1, '\0', sizeof(serialReadBuffer_clean_task1));
+                memcpy(BLEReadBuffer_clean, &TC4_data_String, TC4_data_String.length());
+                xQueueSend(queueTC4_data, &BLEReadBuffer_clean, timeOut);
+                memset(BLEReadBuffer_clean, '\0', sizeof(BLEReadBuffer_clean));
+                memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
+                TC4_data_String = "";
+                xSemaphoreGive(xserialReadBufferMutex);
             }
-            xSemaphoreGive(xserialReadBufferMutex);
         }
         vTaskDelay(20);
     }
 }
 
+void TASK_SendDataTo_BLE(void *pvParameters)
+{
+    (void)pvParameters;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
+    TickType_t xLastWakeTime;
+    const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
+    uint8_t BLE_Send_Buffer[BUFFER_SIZE];
+    String BLE_data_String;
+    int count = 0;
+    xLastWakeTime = xTaskGetTickCount();
+    for (;;)
+    {
+        if (xQueueReceive(queueTC4_data, &BLE_Send_Buffer, timeOut) == pdPASS)
+        {
+
+            if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+            {
+                BLE_data_String = String((char *)BLE_Send_Buffer);
+#if defined(DEBUG_MODE)
+                Serial.print("To BLE DATA:");
+                Serial.print(BLE_data_String);
+#endif
+                // memcpy(BLE_Send_Buffer, &BLE_data_String, BLE_data_String.length());
+                SerialBT.write(BLE_Send_Buffer, sizeof(BLE_Send_Buffer));
+                // SerialBT.println(BLE_data_String);
+                BLE_data_String = "";
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
+            vTaskDelay(50);
+        }
+    }
+}
 // Task  for Reading BLE 模块读取SerialBT的数据 queueCMD 传递给 TASK_SendCMDtoTC4，实现小程序通过蓝牙发送TC4指令到TC4功能
 void TASK_CMD_From_BLE(void *pvParameters)
 {
@@ -179,7 +196,8 @@ void TASK_CMD_From_BLE(void *pvParameters)
 #endif
                 CMD_String = "";
                 memcpy(BLEReadBuffer_clean, &CMD_String, CMD_String.length());
-                xQueueSendToFront(queueCMD, &bleReadBuffer, timeOut);
+                xQueueSend(queueCMD, &BLEReadBuffer_clean, timeOut);
+                memset(BLEReadBuffer_clean, '\0', sizeof(BLEReadBuffer_clean));
                 memset(bleReadBuffer, '\0', sizeof(bleReadBuffer));
                 xSemaphoreGive(xserialReadBufferMutex);
             }
@@ -193,7 +211,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 2000 / portTICK_PERIOD_MS;
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
     uint8_t CMDBuffer[BUFFER_SIZE] = "READ\n";
     xLastWakeTime = xTaskGetTickCount();
@@ -214,12 +232,12 @@ void TASK_SendCMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 250;
+    const TickType_t timeOut = 300;
     uint8_t CMDBuffer[BUFFER_SIZE];
     String CMD_String;
     String BLE_data_String;
     int j = 0;
-    const TickType_t xIntervel = 100 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
@@ -248,10 +266,11 @@ void TASK_SendCMDtoTC4(void *pvParameters)
                 }
                 CMD_String.trim();
                 CMD_String.toUpperCase();
-                Serial_in.println(CMD_String); // 输出指令
+                CMD_String.concat('\n');
+                Serial_in.print(CMD_String); // 输出指令
 #if defined(DEBUG_MODE)
                 Serial.print("To TC4 CMD:");
-                Serial.println(CMD_String);
+                Serial.print(CMD_String);
 #endif
                 CMD_String = "";
                 xSemaphoreGive(xserialReadBufferMutex);
@@ -428,11 +447,17 @@ void setup()
     //         vTaskDelay(500);
     //     }
 
+    // Init BLE Serial
+    SerialBT.begin(ap_name, true, 2);
+    SerialBT.setTimeout(10);
+#if defined(DEBUG_MODE)
+    Serial.printf("\nSerial_BT setup OK\n");
+#endif
 
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
-        TASK_ReadDataFormTC4, "DataFormTC4" // 测量电池电源数据，每分钟测量一次
+        TASK_GetDataFormTC4, "DataFormTC4" // 测量电池电源数据，每分钟测量一次
         ,
         1024 * 4 // This stack size can be checked & adjusted by reading the Stack Highwater
         ,
@@ -441,7 +466,7 @@ void setup()
         NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
     );
 #if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=1:DataFormTC4 OK\n");
+    Serial.printf("\nTASK=1:TASK_GetDataFormTC4 OK\n");
 #endif
 
     // Setup tasks to run independently.
@@ -456,6 +481,19 @@ void setup()
     );
 #if defined(DEBUG_MODE)
     Serial.printf("\nTASK=2:ReadBLE OK\n");
+#endif
+    // Setup tasks to run independently.
+    xTaskCreatePinnedToCore(
+        TASK_SendDataTo_BLE, "TASK_SendDataTo_BLE" // 测量电池电源数据，每分钟测量一次
+        ,
+        1024 * 6// This stack size can be checked & adjusted by reading the Stack Highwater
+        ,
+        NULL, 3 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
+        ,
+        NULL, 1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
+    );
+#if defined(DEBUG_MODE)
+    Serial.printf("\nTASK=3:TASK_SendDataTo_BLE OK\n");
 #endif
 
     //     // Setup tasks to run independently.
@@ -517,12 +555,6 @@ void setup()
     //     Serial.printf("\nTASK=6:TASK_Modbus_From_CMD OK \n");
     // #endif
 
-    // Init BLE Serial
-    SerialBT.begin(ap_name, true, 2);
-    SerialBT.setTimeout(10);
-#if defined(DEBUG_MODE)
-    Serial.printf("\nSerial_BT setup OK\n");
-#endif
     // Init Modbus-TCP
     // #if defined(DEBUG_MODE)
     //     Serial.printf("\nStart Modbus-TCP  service OK\n");
