@@ -409,6 +409,26 @@ void setup()
     Serial.printf("\nSerial Started\n");
 #endif
 
+    // 初始化网络服务
+    WiFi.macAddress(macAddr);
+    // Serial_debug.println("WiFi.mode(AP):");
+    // WiFi.mode(WIFI_AP);
+    sprintf(ap_name, "MATCHBOX_%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
+    //     if (WiFi.softAP(ap_name, "12345678"))
+    //     { // defualt IP address :192.168.4.1 password min 8 digis
+    // #if defined(DEBUG_MODE)
+    //         Serial.printf("\nWiFi AP: %s Started\n", ap_name);
+    // #endif
+    //     }
+    //     else
+    //     {
+    // #if defined(DEBUG_MODE)
+    //         Serial.printf("\nWiFi AP NOT OK YET...\n");
+    // #endif
+    //         vTaskDelay(500);
+    //     }
+
+
     /*---------- Task Definition ---------------------*/
     // Setup tasks to run independently.
     xTaskCreatePinnedToCore(
@@ -496,25 +516,6 @@ void setup()
     // #if defined(DEBUG_MODE)
     //     Serial.printf("\nTASK=6:TASK_Modbus_From_CMD OK \n");
     // #endif
-
-    // 初始化网络服务
-    WiFi.macAddress(macAddr);
-    // Serial_debug.println("WiFi.mode(AP):");
-    // WiFi.mode(WIFI_AP);
-    sprintf(ap_name, "MBox-%02X%02X%02X", macAddr[3], macAddr[4], macAddr[5]);
-    //     if (WiFi.softAP(ap_name, "12345678"))
-    //     { // defualt IP address :192.168.4.1 password min 8 digis
-    // #if defined(DEBUG_MODE)
-    //         Serial.printf("\nWiFi AP: %s Started\n", ap_name);
-    // #endif
-    //     }
-    //     else
-    //     {
-    // #if defined(DEBUG_MODE)
-    //         Serial.printf("\nWiFi AP NOT OK YET...\n");
-    // #endif
-    //         vTaskDelay(500);
-    //     }
 
     // Init BLE Serial
     SerialBT.begin(ap_name, true, 2);
