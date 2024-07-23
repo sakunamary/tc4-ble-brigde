@@ -89,7 +89,7 @@ void TASK_GetDataFormTC4(void *pvParameters) // task1
 {
     uint8_t serialReadBuffer[BUFFER_SIZE];
     uint8_t ReadBuffer_clean_OUT[BUFFER_SIZE];
-    const TickType_t timeOut = 500 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
     int j = 0;
     int count = 0;
     // String CMD_String;
@@ -144,7 +144,7 @@ void TASK_SendDataTo_BLE(void *pvParameters) // task3
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 300 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
     uint8_t BLE_Send_Buffer[BUFFER_SIZE];
     uint8_t BLE_Send_Buffer_clean[BUFFER_SIZE];
     char BLE_Send_out[BUFFER_SIZE];
@@ -268,7 +268,7 @@ void TASK_SendCMDtoTC4(void *pvParameters) // TASK5
     uint8_t TASK5_CMDBuffer[BUFFER_SIZE];
     char TASK5_CMD_String[BUFFER_SIZE];
     String TASK5_BLE_data_String;
-    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
@@ -454,9 +454,12 @@ void setup()
     xserialReadBufferMutex = xSemaphoreCreateMutex();
 
 #if defined(DEBUG_MODE)
+
+    // Start Serial
     Serial.begin(BAUDRATE);
     Serial.printf("\nSerial Started\n");
 #endif
+    Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
     // 初始化网络服务
