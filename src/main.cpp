@@ -89,7 +89,7 @@ void TASK_GetDataFormTC4(void *pvParameters) // task1
 {
     uint8_t serialReadBuffer[BUFFER_SIZE];
     uint8_t ReadBuffer_clean_OUT[BUFFER_SIZE];
-    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 500 / portTICK_PERIOD_MS;
     int j = 0;
     int count = 0;
     // String CMD_String;
@@ -191,7 +191,7 @@ void TASK_CMD_From_BLE(void *pvParameters) // task2
 {
     uint8_t task2_bleReadBuffer[BUFFER_SIZE];
     uint8_t task2_BLEReadBuffer_clean[BUFFER_SIZE];
-    const TickType_t timeOut = 500 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 200 / portTICK_PERIOD_MS;
     int j = 0;
     String TASK2_CMD_String;
     String task2_BLE_data_String;
@@ -245,7 +245,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters) // task4
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
     uint8_t TASK4_CMDBuffer[BUFFER_SIZE] = "READ\n";
     xLastWakeTime = xTaskGetTickCount();
 
