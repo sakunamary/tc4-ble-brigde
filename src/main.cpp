@@ -67,7 +67,7 @@ QueueHandle_t queueTC4_data = xQueueCreate(20, sizeof(char[BUFFER_SIZE])); // �
 // const uint16_t RESET_HREG = 3006;
 // const uint16_t PID_HREG = 3007;
 
-char ap_name[30];
+char ap_name[16];
 uint8_t macAddr[6];
 // double Data[6]; // TC4输出的温度数据：ambient,chan1,chan2,heater duty, fan duty, SV。共6路数据
 
@@ -90,7 +90,8 @@ void TASK_GetDataFormTC4(void *pvParameters) // task1
     uint8_t serialReadBuffer[BUFFER_SIZE];
     uint8_t BLEReadBuffer_clean[BUFFER_SIZE];
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
-    // int j = 0;
+    int j = 0;
+    int count = 0;
     // String CMD_String;
     String TC4_data_String;
 
@@ -98,24 +99,41 @@ void TASK_GetDataFormTC4(void *pvParameters) // task1
     {
         if (Serial_in.available())
         {
-            if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
+            if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS) // lock mutex
             {
-                auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE);
+                auto count = Serial_in.readBytesUntil('\n', serialReadBuffer, BUFFER_SIZE); // 从串口读取数据进来。
+                TC4_data_String = String((char *)serialReadBuffer);                         // 转字到处理符号
 
-                TC4_data_String = String((char *)serialReadBuffer);
-                 TC4_data_String.trim();
-                TC4_data_String.toUpperCase();
-                 TC4_data_String.concat('\n');
+                if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
+                {
+                    while (j < count && count > 0)
+                    {
+                        if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\0')
+                        {
+                            BLEReadBuffer_clean[j] = serialReadBuffer[j]; // copy value
+                            TC4_data_String = "";
+                            j = 0; // clearing
+
+                            break; // 跳出循环
+                        }
+                        else
+                        {
+                            BLEReadBuffer_clean[j] = serialReadBuffer[j]; // copy value
+                            j++;
+                        }
+                    }
+
 #if defined(DEBUG_MODE)
-                // Serial.print("TC4 data:");
-                Serial.print(TC4_data_String);
+                    Serial.print("TC4 data:");
+                    Serial.printf("%s\n", serialReadBuffer);
 #endif
-                // memcpy(BLEReadBuffer_clean, &TC4_data_String, TC4_data_String.length());
-                xQueueSend(queueTC4_data, &TC4_data_String, timeOut);
-                // xQueueSend(queueTC4_data, &BLEReadBuffer_clean, timeOut);
-                // memset(BLEReadBuffer_clean, '\0', sizeof(BLEReadBuffer_clean));
-                // memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));
-                TC4_data_String = "";
+
+                    // memcpy(BLEReadBuffer_clean, &CMD_String, CMD_String.length());  // 把干净数据添加到输出字符串数组中
+                    xQueueSend(queueTC4_data, &BLEReadBuffer_clean, timeOut); // 发送到队列
+                }
+                memset(BLEReadBuffer_clean, '\0', sizeof(BLEReadBuffer_clean)); // cleaning
+                memset(serialReadBuffer, '\0', sizeof(serialReadBuffer));       // cleaning
+                TC4_data_String = "";                                           // cleaning
                 xSemaphoreGive(xserialReadBufferMutex);
             }
         }
@@ -128,39 +146,56 @@ void TASK_SendDataTo_BLE(void *pvParameters)
     (void)pvParameters;
     const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
 
     uint8_t BLE_Send_Buffer[BUFFER_SIZE];
     uint8_t BLE_Send_Buffer_clean[BUFFER_SIZE];
+    char BLE_Send_out[BUFFER_SIZE];
     String BLE_data_String;
-    int count = 0;
+    String CMD_String;
+    int j = 0;
+
     xLastWakeTime = xTaskGetTickCount();
     for (;;)
     {
         // vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xQueueReceive(queueTC4_data, &BLE_data_String, timeOut) == pdPASS)
+        if (xQueueReceive(queueTC4_data, &BLE_Send_Buffer, timeOut) == pdPASS)
         {
-
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
-                 Serial.print("To BLE DATA:");
-                Serial.println(BLE_data_String);
-                // memcpy(BLE_Send_Buffer_clean, &BLE_data_String, BLE_data_String.length());
-                // SerialBT.write(BLE_Send_Buffer_clean, sizeof(BLE_Send_Buffer_clean));
-                SerialBT.println(BLE_data_String);
+                // BLE_data_String = String((char *)BLE_Send_Buffer); // 转字到处理符号
+                // while (j < BLE_data_String.length())
+                // {
+                //     if (BLE_Send_Buffer[j] == '\n' || BLE_Send_Buffer[j] == '\0')
+                //     {
+                //         BLE_Send_Buffer_clean[j] = BLE_data_String[j]; // copy value
+
+                //         j = 0; // clearing
+                //         break; // 跳出循环
+                //     }
+                //     else
+                //     {
+                //         BLE_Send_Buffer_clean[j] = BLE_data_String[j]; // copy value
+                //         j++;
+                //     }
+                // }
+                sprintf(BLE_Send_out, "#%s;\n", BLE_Send_Buffer);
+
+#if defined(DEBUG_MODE)
+                Serial.print("BLE send in :");
+                Serial.printf("%s\n", BLE_Send_Buffer);
+                Serial.print("BLE send data:");
+                Serial.print(BLE_Send_out);
+#endif
+                SerialBT.print(BLE_Send_out);
+                // SerialBT.write(BLE_Send_Buffer_clean, sizeof(BLE_Send_Buffer_clean) + 1);
+                memset(BLE_Send_Buffer_clean, '\0', sizeof(BLE_Send_Buffer_clean));
+                // memset(BLE_Send_Buffer, '\0', sizeof(BLE_Send_Buffer));
+                memset(BLE_Send_out, '\0', sizeof(BLE_Send_out));
+                // CMD_String = "";
+                BLE_data_String = "";
                 xSemaphoreGive(xserialReadBufferMutex);
             }
-            // #if defined(DEBUG_MODE)
-            //             Serial.print("To BLE DATA:");
-            //             Serial.print(BLE_data_String);
-            // #endif
-            // memcpy(BLE_Send_Buffer_clean, &BLE_data_String, BLE_data_String.length());
-            // SerialBT.write(BLE_Send_Buffer_clean, sizeof(BLE_Send_Buffer_clean));
-            BLE_data_String = "";
-            // memset(BLE_Send_Buffer_clean, '\0', sizeof(BLE_Send_Buffer_clean));
-            // memset(BLE_Send_Buffer, '\0', sizeof(BLE_Send_Buffer));
-            // SerialBT.println(BLE_data_String);
-
             vTaskDelay(50);
         }
     }
@@ -181,8 +216,12 @@ void TASK_CMD_From_BLE(void *pvParameters)
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
                 auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-
                 BLE_data_String = String((char *)bleReadBuffer);
+#if defined(DEBUG_MODE)
+                // Serial.print("CMD From BLE:");
+                // Serial.println(BLE_data_String);
+#endif
+
                 while (j < BLE_data_String.length() && BLE_data_String.length() > 0)
                 {
 
@@ -201,11 +240,7 @@ void TASK_CMD_From_BLE(void *pvParameters)
                 }
                 CMD_String.trim();
                 CMD_String.toUpperCase();
-#if defined(DEBUG_MODE)
-                // Serial.print("TC4 to BLE data:");
-                // Serial.println(CMD_String);
-#endif
-
+                CMD_String.concat('\n'); // 增加换行结束符号
                 memcpy(BLEReadBuffer_clean, &CMD_String, CMD_String.length());
                 xQueueSend(queueCMD, &BLEReadBuffer_clean, timeOut);
                 memset(BLEReadBuffer_clean, '\0', sizeof(BLEReadBuffer_clean));
@@ -223,7 +258,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 2000 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
     const TickType_t timeOut = 1000 / portTICK_PERIOD_MS;
     uint8_t CMDBuffer[BUFFER_SIZE] = "READ\n";
     xLastWakeTime = xTaskGetTickCount();
@@ -246,10 +281,10 @@ void TASK_SendCMDtoTC4(void *pvParameters)
     TickType_t xLastWakeTime;
     const TickType_t timeOut = 300;
     uint8_t CMDBuffer[BUFFER_SIZE];
-    String CMD_String;
+    char CMD_String[BUFFER_SIZE];
     String BLE_data_String;
     int j = 0;
-    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
@@ -260,31 +295,31 @@ void TASK_SendCMDtoTC4(void *pvParameters)
             if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
             {
                 BLE_data_String = String((char *)CMDBuffer);
-                while (j < BLE_data_String.length() && BLE_data_String.length() > 0)
-                {
-
-                    if (BLE_data_String[j] == '\n')
-                    {
-                        CMD_String += BLE_data_String[j]; // copy value
-                        BLE_data_String = "";
-                        j = 0; // clearing
-                        break; // 跳出循环
-                    }
-                    else
-                    {
-                        CMD_String += BLE_data_String[j]; // copy value
-                        j++;
-                    }
-                }
-                CMD_String.trim();
-                CMD_String.toUpperCase();
-                CMD_String.concat('\n');
-                Serial_in.print(CMD_String); // 输出指令
 #if defined(DEBUG_MODE)
                 // Serial.print("To TC4 CMD:");
-                // Serial.print(CMD_String);
+                // Serial.print(BLE_data_String);
 #endif
-                CMD_String = "";
+                // while (j < BLE_data_String.length() && BLE_data_String.length() > 0)
+                // {
+
+                //     if (BLE_data_String[j] == '\n')
+                //     {
+                //         CMD_String += BLE_data_String[j]; // copy value
+                //         BLE_data_String = "";
+                //         j = 0; // clearing
+                //         break; // 跳出循环
+                //     }
+                //     else
+                //     {
+                //         CMD_String += BLE_data_String[j]; // copy value
+                //         j++;
+                //     }
+                // }
+
+                sprintf(CMD_String, "%s\n", CMDBuffer);
+
+                Serial_in.print(CMD_String); // 输出指令
+                memset(CMD_String, '\0', sizeof(CMD_String));
                 xSemaphoreGive(xserialReadBufferMutex);
             }
             vTaskDelay(20);

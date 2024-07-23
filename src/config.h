@@ -5,7 +5,7 @@
 #define uS_TO_S_FACTOR 1000000 /* Conversion factor for micro seconds to seconds */
 #define BAUDRATE 115200        // serial port baudrate
 
-#define VERSION "1.1.1"
+#define VERSION "1.1.2"
 
 #define DEBUG_MODE
 #define TX 17
