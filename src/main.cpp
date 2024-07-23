@@ -44,22 +44,53 @@ void startBluetooth()
 // Task for reading Serial Port
 void ReadSerialTask(void *e)
 {
+    (void)e;
+    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    char BLE_Send_out[BUFFER_SIZE];
+    uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
+    // String cmd_check;
+    int j = 0;
     while (true)
     {
-        if (Serial.available())
+        if (Serial_in.available())
         {
-            auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-            SerialBT.write(serialReadBuffer, count);
-            Serial.write(serialReadBuffer, count);
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            {
+                auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+                // cmd_check = String((char *)serialReadBuffer);
+                // Serial.println(cmd_check);
+                if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
+                {
+                    while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
+                    {
+                        if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\0')
+                        {
+                            j = 0;                                               // clearing
+                            break; // 跳出循环
+                        }
+                        else
+                        {
+                            serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                            j++;
+                        }
+                    }
+                    sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
+                    Serial.printf(BLE_Send_out);
+                    SerialBT.printf(BLE_Send_out);
+                }
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
+
+            delay(20);
         }
-        delay(20);
     }
 }
 
 // Task for reading BLE Serial
 void ReadBtTask(void *e)
 {
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    (void)e;
+    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
     while (true)
     {
         if (SerialBT.available())
@@ -68,7 +99,7 @@ void ReadBtTask(void *e)
             {
                 auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
                 Serial_in.write(bleReadBuffer, count);
-                Serial.write(bleReadBuffer, count);
+                // Serial.write(bleReadBuffer, count);
                 xSemaphoreGive(xserialReadBufferMutex);
             }
             delay(20);
@@ -80,7 +111,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 2000 / portTICK_PERIOD_MS;
     String cmd;
     xLastWakeTime = xTaskGetTickCount();
 
@@ -100,9 +131,9 @@ void setup()
 
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
-    Serial_in.setRxBufferSize(BUFFER_SIZE);
+     Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
-    Serial.setTimeout(10);
+    // Serial_in.setTimeout(10);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
     // Start BLE
@@ -115,11 +146,15 @@ void setup()
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-
+    Serial.printf("Disable watchdog timers\n");
     // Start tasks
-    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 2, NULL);
-    xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 2, NULL);
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "TASK_Send_READ_CMDtoTC4", 10240, NULL, 2, NULL);
+
+    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
+    Serial.printf("Start ReadSerialTask\n");
+    xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
+    Serial.printf("Start ReadSerialTask\n");
+    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
+    Serial.printf("Start Send_READ_Task\n");
 }
 
 void loop()
