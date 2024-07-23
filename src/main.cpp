@@ -45,7 +45,7 @@ void startBluetooth()
 void ReadSerialTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
     // String cmd_check;
@@ -81,7 +81,7 @@ void ReadSerialTask(void *e)
                 xSemaphoreGive(xserialReadBufferMutex);
             }
 
-            delay(20);
+            delay(50);
         }
     }
 }
@@ -90,7 +90,7 @@ void ReadSerialTask(void *e)
 void ReadBtTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     while (true)
     {
         if (SerialBT.available())
@@ -102,7 +102,7 @@ void ReadBtTask(void *e)
                 // Serial.write(bleReadBuffer, count);
                 xSemaphoreGive(xserialReadBufferMutex);
             }
-            delay(20);
+            delay(50);
         }
     }
 }
@@ -111,7 +111,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 2000 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
     String cmd;
     xLastWakeTime = xTaskGetTickCount();
 
