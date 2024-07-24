@@ -63,7 +63,7 @@ void ReadSerialTask(void *e)
                 {
                     while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
                     {
-                        if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\0')
+                        if (serialReadBuffer[j] == '\n')
                         {
                             j = 0;                                               // clearing
                             break; // 跳出循环
