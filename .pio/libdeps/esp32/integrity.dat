@@ -1,4 +1,2 @@
 avinabmalla/ESP32_BleSerial@^1.0.4
-bblanchon/ArduinoJson@^6.21.1
-r-downing/AutoPID@^1.0.4
-emelianov/modbus-esp8266@^4.1.0
+ayushsharma82/ElegantOTA@^3.1.3
