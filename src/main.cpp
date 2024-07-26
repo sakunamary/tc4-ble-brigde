@@ -76,7 +76,16 @@ String IpAddressToString(const IPAddress &ipAddress)
            String(ipAddress[3]);
 }
 
+String processor(const String &var)
+{
+    // Serial.println(var);
+    if (var == "version")
+    {
+        return VERSION;
+    }
 
+    return String();
+}
 void startBluetooth()
 {
     byte tries = 0;
@@ -231,9 +240,8 @@ void setup()
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
     Serial.printf("Start Send_READ_Task\n");
 
-    server.on("/", []()
-              { server.send(200, "text/plain", "Hi! This is ElegantOTA Demo."); });
-
+    server.on("/", HTTP_GET, []()
+              { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
     ElegantOTA.onStart(onOTAStart);
