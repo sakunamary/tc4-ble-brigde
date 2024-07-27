@@ -103,7 +103,7 @@ void startBluetooth()
         delay(1000);
         Serial.println("wifi not ready");
 
-        if (tries++ > 5)
+        if (tries++ > 2)
         {
             // init wifi
             Serial.println("WiFi.mode(AP):");
