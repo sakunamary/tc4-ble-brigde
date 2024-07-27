@@ -1,72 +1,71 @@
+/**
+ * Bluetooth LE Serial Bridge Example
+ *
+ * Creates a bridge between the default serial port and a Bluetooth LE Serial port.
+ * Data received from BLE is transferred to the serial port and
+ * data receivedfrom serial port is transferred to BLE.
+ *
+ * Avinab Malla
+ * 28 December 2022
+ **/
+
 #include <Arduino.h>
 #include "config.h"
-
 #include <BleSerial.h>
 #include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
-
-
+#include "soc/rtc_wdt.h"
 #include <HardwareSerial.h>
 
-
 #include <WiFi.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <AsyncElegantOTA.h>
-
-//spSoftwareSerial::UART Serial_in;// D16 RX_drumer  D17 TX_drumer 
-HardwareSerial Serial_in(2);
-SemaphoreHandle_t xThermoDataMutex = NULL;
-
-AsyncWebServer server(80);
-
-String IpAddressToString(const IPAddress &ipAddress);                         //转换IP地址格式
-String processor(const String &var); // webpage function
-
-
-
-char ap_name[30] ;
-uint8_t macAddr[6];
-
-String local_IP;
-String MsgString;
-
-const int BUFFER_SIZE = 512;
+#include <WiFiClient.h>
+#include <WebServer.h>
+#include <ElegantOTA.h>
 
 BleSerial SerialBT;
+String local_IP;
+HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
+WebServer server(80);
 
+uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
+char deviceName[30];       // The serial string that is broadcast.
+
+SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
+unsigned long ota_progress_millis = 0;
 
-
-
-
-//Task for reading Serial Port  模块发送 READ 指令后，读取Serial的数据 ，并写入数组
-void TASK_ReadSerial(void *pvParameters) {
-  while (true) {
-    if (Serial_in.available()) {
-      auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-      SerialBT.write(serialReadBuffer, count);
-    }
-    delay(20);
-  }
+void onOTAStart()
+{
+    // Log when OTA has started
+    Serial.println("OTA update started!");
+    // <Add your own code here>
 }
 
-//Task for reading BLE Serial
-void TASK_ReadBtTask(void *epvParameters) {
-  while (true) {
-    if (SerialBT.available()) {
-      auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-      Serial_in.write(bleReadBuffer, count);  
-
-#if defined(DEBUG_MODE)       
-                  Serial.write(bleReadBuffer, count); 
-#endif                 
+void onOTAProgress(size_t current, size_t final)
+{
+    // Log every 1 second
+    if (millis() - ota_progress_millis > 1000)
+    {
+        ota_progress_millis = millis();
+        Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
     }
-    delay(20);
-  }
+}
+
+void onOTAEnd(bool success)
+{
+    // Log when OTA has finished
+    if (success)
+    {
+        Serial.println("OTA update finished successfully!");
+    }
+    else
+    {
+        Serial.println("There was an error during OTA update!");
+    }
+    // <Add your own code here>
 }
 
 String IpAddressToString(const IPAddress &ipAddress)
@@ -77,101 +76,178 @@ String IpAddressToString(const IPAddress &ipAddress)
            String(ipAddress[3]);
 }
 
-String processor(const String &var)
-{
-if (var == "version")
-    {
-        return VERSION;
-    }
 
-    return String();
+void startBluetooth()
+{
+    byte tries = 0;
+    // Get unit MAC address
+    WiFi.macAddress(unitMACAddress);
+    sprintf(deviceName, "MATCHBOX_%02X%02X%02X", unitMACAddress[3], unitMACAddress[4], unitMACAddress[5]);
+
+    // Init BLE Serial
+    SerialBT.begin(deviceName);
+    SerialBT.setTimeout(10);
+
+    while (WiFi.status() != WL_CONNECTED)
+    {
+
+        delay(1000);
+        Serial.println("wifi not ready");
+
+        if (tries++ > 5)
+        {
+            // init wifi
+            Serial.println("WiFi.mode(AP):");
+            WiFi.mode(WIFI_AP);
+            WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
+            break;
+        }
+    }
+    // show AP's IP
+    Serial.printf("IP:");
+    if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
+    {
+        Serial.println(IpAddressToString(WiFi.softAPIP()));
+        local_IP = IpAddressToString(WiFi.softAPIP());
+    }
+    else
+    {
+        Serial.println(IpAddressToString(WiFi.localIP()));
+        local_IP = IpAddressToString(WiFi.localIP());
+    }
 }
 
+// Task for reading Serial Port
+void ReadSerialTask(void *e)
+{
+    (void)e;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    char BLE_Send_out[BUFFER_SIZE];
+    uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
+    // String cmd_check;
+    int j = 0;
+    while (true)
+    {
+        if (Serial_in.available())
+        {
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            {
+                auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+                // cmd_check = String((char *)serialReadBuffer);
+                // Serial.println(cmd_check);
+                if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
+                {
+                    while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
+                    {
+                        if (serialReadBuffer[j] == '\n')
+                        {
+                            j = 0; // clearing
+                            break; // 跳出循环
+                        }
+                        else
+                        {
+                            serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                            j++;
+                        }
+                    }
+                    sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
+                    Serial.printf(BLE_Send_out);
+                    SerialBT.printf(BLE_Send_out);
+                }
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
 
-void setup() {
+            delay(50);
+        }
+    }
+}
 
-    xThermoDataMutex = xSemaphoreCreateMutex();
+// Task for reading BLE Serial
+void ReadBtTask(void *e)
+{
+    (void)e;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    while (true)
+    {
+        if (SerialBT.available())
+        {
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            {
+                auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+                Serial_in.write(bleReadBuffer, count);
+                // Serial.write(bleReadBuffer, count);
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
+            delay(50);
+        }
+    }
+}
+// Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
+void TASK_Send_READ_CMDtoTC4(void *pvParameters)
+{
+    (void)pvParameters;
+    TickType_t xLastWakeTime;
+    const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
+    String cmd;
+    xLastWakeTime = xTaskGetTickCount();
 
-  //Disable watchdog timers
-  disableCore0WDT();
-  disableCore1WDT();
-  disableLoopWDT();
-  esp_task_wdt_delete(NULL);
-  //rtc_wdt_protect_off();
-  //rtc_wdt_disable();
+    for (;;)
+    {
+        vTaskDelayUntil(&xLastWakeTime, xIntervel);
+        if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+        {
+            Serial_in.printf("READ\n");
+            xSemaphoreGive(xserialReadBufferMutex);
+        }
+    }
+}
 
+void setup()
+{
+
+    // Disable watchdog timers
+    disableCore0WDT();
+    disableCore1WDT();
+    disableLoopWDT();
+    esp_task_wdt_delete(NULL);
+    rtc_wdt_protect_off();
+    rtc_wdt_disable();
+    Serial.printf("Disable watchdog timers\n");
+
+    xserialReadBufferMutex = xSemaphoreCreateMutex();
+    // Start Serial
+    Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
-#if defined(DEBUG_MODE)
-    Serial.printf("\nWIFI  STARTING...\n");
-#endif  
-  //初始化网络服务
+    // Start BLE
+    startBluetooth();
 
-            WiFi.macAddress(macAddr); 
-            // Serial_debug.println("WiFi.mode(AP):");
-            WiFi.mode(WIFI_AP);
-            sprintf( ap_name ,"MatchBox-%02X%02X%02X",macAddr[3],macAddr[4],macAddr[5]);
-            WiFi.softAP(ap_name, "12345678"); // defualt IP address :192.168.4.1 password min 8 digis
+    // Start tasks
+    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
+    Serial.printf("Start ReadSerialTask\n");
+    xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
+    Serial.printf("Start ReadBtTask\n");
+    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
+    Serial.printf("Start Send_READ_Task\n");
 
+    server.on("/", []()
+              { server.send(200, "text/plain", "Hi! This is ElegantOTA Demo."); });
 
+    ElegantOTA.begin(&server); // Start ElegantOTA
+    // ElegantOTA callbacks
+    ElegantOTA.onStart(onOTAStart);
+    ElegantOTA.onProgress(onOTAProgress);
+    ElegantOTA.onEnd(onOTAEnd);
 
-#if defined(DEBUG_MODE)
-Serial.printf("\nStart Task...\n");
-#endif
-    /*---------- Task Definition ---------------------*/
-    // Setup tasks to run independently.
-    xTaskCreatePinnedToCore(
-        TASK_ReadSerial, "ReadSerial" // 测量电池电源数据，每分钟测量一次
-        ,
-        4096 // This stack size can be checked & adjusted by reading the Stack Highwater
-        ,
-        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-        ,
-        NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
-    );
-
-
-#if defined(DEBUG_MODE)
-    Serial.printf("\nTASK1:ReadSerial...\n");
-#endif
-
-    // Setup tasks to run independently.
-    xTaskCreatePinnedToCore(
-        TASK_ReadBtTask, "ReadBtTask" // 测量电池电源数据，每分钟测量一次
-        ,
-        1024 // This stack size can be checked & adjusted by reading the Stack Highwater
-        ,
-        NULL, 1 // Priority, with 1 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-        ,
-        NULL,  1 // Running Core decided by FreeRTOS,let core0 run wifi and BT
-    );
-
-
-#if defined(DEBUG_MODE)
-    Serial.printf("\nTASK=2:ReadBtTask...\n");
-#endif
-
-    // for index.html
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-                  { request->send_P(200, "text/html", index_html, processor); });
-
-  AsyncElegantOTA.begin(&server);    // Start AsyncElegantOTA
-  server.begin();
-
-#if defined(DEBUG_MODE)
+    server.begin();
     Serial.println("HTTP server started");
-#endif
-
-  //Init BLE Serial
-  SerialBT.begin(ap_name,true,2);
-  SerialBT.setTimeout(10);
-#if defined(DEBUG_MODE)
-     Serial.printf("\nSerial_BT setup OK\n");
-#endif
-
 }
+void loop()
+{
+    // This task is not used
+    // vTaskDelete(NULL);
 
-void loop() {
-
+    server.handleClient();
+    ElegantOTA.loop();
 }
