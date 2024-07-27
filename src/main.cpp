@@ -11,7 +11,7 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include <BleSerial.h>
+#include "BluetoothSerial.h"
 #include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
@@ -23,8 +23,15 @@
 #include <WebServer.h>
 #include <ElegantOTA.h>
 
-BleSerial SerialBT;
+
+void Bluetooth_Callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param); // bluetooth callback handler
+
+// bluetooth declare
+BluetoothSerial SerialBT;
+
 String local_IP;
+String BT_EVENT;
+
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
 WebServer server(80);
@@ -36,6 +43,41 @@ SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
+
+void Bluetooth_Callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
+{
+    switch (event)
+    {
+    case ESP_SPP_INIT_EVT:
+        Serial.println("SPP is inited");
+        BT_EVENT = "SPP INITED";
+        break;
+    case ESP_SPP_START_EVT:
+        Serial.println("SPP server started");
+        BT_EVENT = "SPP STARTED";
+        break;
+    case ESP_SPP_SRV_OPEN_EVT:
+        Serial.println("Client Connected");
+        BT_EVENT = "Client OK";
+        break;
+    case ESP_SPP_CLOSE_EVT:
+        Serial.println("Client disconnected");
+        BT_EVENT = "Client lost";
+        break;
+    case ESP_SPP_DATA_IND_EVT:
+        Serial.println("SPP  received data");
+        BT_EVENT = "DATA receiving";
+        break;
+    case ESP_SPP_WRITE_EVT:
+        Serial.println("SPP  write data");
+        BT_EVENT = "DATA writing";
+        break;
+    default:
+        Serial.print("Unhandle Event: ");
+        Serial.println(event);
+        break;
+    }
+}
 
 void onOTAStart()
 {
@@ -93,9 +135,25 @@ void startBluetooth()
     WiFi.macAddress(unitMACAddress);
     sprintf(deviceName, "MATCHBOX_%02X%02X%02X", unitMACAddress[3], unitMACAddress[4], unitMACAddress[5]);
 
-    // Init BLE Serial
-    SerialBT.begin(deviceName);
-    SerialBT.setTimeout(10);
+    // Initial Bluetooth Serial Port Profile (SPP)
+    SerialBT.register_callback(Bluetooth_Callback);
+    // Setup bluetooth device name as
+    if (!SerialBT.begin(deviceName))
+    {
+        Serial.println("An error occurred during initialize");
+    }
+    else
+    {
+        Serial.println("Bluetooth is ready for pairing");
+        // Use FIXED pin-code for Legacy Pairing
+        char pinCode[5];
+        memset(pinCode, 0, sizeof(pinCode));
+        pinCode[0] = '1';
+        pinCode[1] = '2';
+        pinCode[2] = '3';
+        pinCode[3] = '4';
+        SerialBT.setPin(pinCode);
+    }
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -103,7 +161,7 @@ void startBluetooth()
         delay(1000);
         Serial.println("wifi not ready");
 
-        if (tries++ > 5)
+        if (tries++ > 2)
         {
             // init wifi
             Serial.println("WiFi.mode(AP):");
@@ -237,8 +295,8 @@ void setup()
     Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
     Serial.printf("Start ReadBtTask\n");
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
-    Serial.printf("Start Send_READ_Task\n");
+    // xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
+    // Serial.printf("Start Send_READ_Task\n");
 
     server.on("/", HTTP_GET, []()
               { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
