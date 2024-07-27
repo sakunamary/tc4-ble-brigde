@@ -13,6 +13,15 @@
 
 const int BUFFER_SIZE = 128;
 
+static TaskHandle_t xTask_TC4_data2Modbus = NULL;
+
+SemaphoreHandle_t xSerailDataMutex = NULL;
+
+
+QueueHandle_t queue_data = xQueueCreate(15, sizeof(uint8_t[BUFFER_SIZE])); // 发送到TC4的命令队列
+QueueHandle_t queueCMD = xQueueCreate(15, sizeof(uint8_t[BUFFER_SIZE]));          // 发送到TC4的命令队列
+
+
 
 
 #endif

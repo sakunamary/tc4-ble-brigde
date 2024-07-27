@@ -11,7 +11,7 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include <BleSerial.h>
+#include "TASK_modbus_handle.h"
 #include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
@@ -23,7 +23,6 @@
 #include <WebServer.h>
 #include <ElegantOTA.h>
 
-BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
@@ -32,7 +31,6 @@ WebServer server(80);
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
 
-SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
@@ -76,17 +74,12 @@ String IpAddressToString(const IPAddress &ipAddress)
            String(ipAddress[3]);
 }
 
-
 void startBluetooth()
 {
     byte tries = 0;
     // Get unit MAC address
     WiFi.macAddress(unitMACAddress);
     sprintf(deviceName, "MATCHBOX_%02X%02X%02X", unitMACAddress[3], unitMACAddress[4], unitMACAddress[5]);
-
-    // Init BLE Serial
-    SerialBT.begin(deviceName);
-    SerialBT.setTimeout(10);
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -130,7 +123,7 @@ void ReadSerialTask(void *e)
     {
         if (Serial_in.available())
         {
-            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
                 // cmd_check = String((char *)serialReadBuffer);
@@ -151,10 +144,9 @@ void ReadSerialTask(void *e)
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    Serial.printf(BLE_Send_out);
-                    SerialBT.printf(BLE_Send_out);
+                    //Serial.printf(BLE_Send_out);
                 }
-                xSemaphoreGive(xserialReadBufferMutex);
+                xSemaphoreGive(xSerailDataMutex);
             }
 
             delay(50);
@@ -162,26 +154,6 @@ void ReadSerialTask(void *e)
     }
 }
 
-// Task for reading BLE Serial
-void ReadBtTask(void *e)
-{
-    (void)e;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
-    while (true)
-    {
-        if (SerialBT.available())
-        {
-            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
-            {
-                auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-                Serial_in.write(bleReadBuffer, count);
-                // Serial.write(bleReadBuffer, count);
-                xSemaphoreGive(xserialReadBufferMutex);
-            }
-            delay(50);
-        }
-    }
-}
 // Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
 void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
@@ -194,10 +166,10 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+        if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
         {
             Serial_in.printf("READ\n");
-            xSemaphoreGive(xserialReadBufferMutex);
+            xSemaphoreGive(xSerailDataMutex);
         }
     }
 }
@@ -214,7 +186,7 @@ void setup()
     rtc_wdt_disable();
     Serial.printf("Disable watchdog timers\n");
 
-    xserialReadBufferMutex = xSemaphoreCreateMutex();
+    xSerailDataMutex = xSemaphoreCreateMutex();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
@@ -226,10 +198,65 @@ void setup()
     // Start tasks
     xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
     Serial.printf("Start ReadSerialTask\n");
-    xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
-    Serial.printf("Start ReadBtTask\n");
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
+    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 2, NULL);
     Serial.printf("Start Send_READ_Task\n");
+    xTaskCreate(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 1, &xTask_TC4_data2Modbus);
+    Serial.printf("Start TC4_data2Modbus\n");
+    xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
+    Serial.printf("Start Modbus_CMD2TC4\n");
+
+    // INIT MODBUS
+    mb.server(502); // Start Modbus IP //default port :502
+#if defined(DEBUG_MODE)
+    Serial.printf("\nStart Modbus-TCP  service OK\n");
+#endif
+    // Add SENSOR_IREG register - Use addIreg() for analog Inputs
+    // PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
+    // AMB_TEMP,ET_HREG,BT_HREG,HEAT_HREG,FAN_HREG,PID_SV_HREG
+    // const uint16_t AMB_TEMP_HREG = 3001; //AMB_TEMP
+    // const uint16_t AMB_RH_HREG = 3002;
+    // const uint16_t BT_HREG = 3003;
+    // const uint16_t ET_HREG = 3004;
+    // const uint16_t HEAT_HREG = 3005; //OT1
+    // const uint16_t FAN_HREG = 3006; //IO3
+    // const uint16_t PID_SV_HREG = 3007; //PID_SV
+    // const uint16_t RESET_HREG = 3008;
+    // const uint16_t PID_ON_HREG = 3009;
+    // const uint16_t PID_P_HREG = 3010;
+    // const uint16_t PID_I_HREG = 3011;
+    // const uint16_t PID_D_HREG = 3012;
+
+    mb.addHreg(AMB_TEMP_HREG);
+    mb.addHreg(AMB_RH_HREG);
+    mb.addHreg(BT_HREG);
+    mb.addHreg(ET_HREG);
+
+    mb.addHreg(HEAT_HREG);
+    mb.addHreg(FAN_HREG);
+    mb.addHreg(RESET_HREG);
+
+    mb.addHreg(PID_SV_HREG);
+    mb.addHreg(PID_STATUS_HREG);
+
+    mb.addHreg(PID_P_HREG);
+    mb.addHreg(PID_I_HREG);
+    mb.addHreg(PID_D_HREG);
+
+    // INIT MODBUS HREG VALUE
+    mb.Hreg(AMB_RH_HREG, 0);   // 初始化赋值
+    mb.Hreg(AMB_TEMP_HREG, 0); // 初始化赋值
+    mb.Hreg(BT_HREG, 0);       // 初始化赋值
+    mb.Hreg(ET_HREG, 0);       // 初始化赋值
+
+    mb.Hreg(HEAT_HREG, 0); // 初始化赋值
+    mb.Hreg(FAN_HREG, 30); // 初始化赋值
+
+    mb.Hreg(PID_P_HREG, 0); // 初始化赋值
+    mb.Hreg(PID_I_HREG, 0); // 初始化赋值
+    mb.Hreg(PID_D_HREG, 0); // 初始化赋值
+
+    mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
+    mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
 
     server.on("/", []()
               { server.send(200, "text/plain", "Hi! This is ElegantOTA Demo."); });
@@ -245,9 +272,7 @@ void setup()
 }
 void loop()
 {
-    // This task is not used
-    // vTaskDelete(NULL);
-
+    mb.task();
     server.handleClient();
     ElegantOTA.loop();
 }
