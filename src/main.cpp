@@ -23,7 +23,6 @@
 #include <WebServer.h>
 #include <ElegantOTA.h>
 
-
 void Bluetooth_Callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param); // bluetooth callback handler
 
 // bluetooth declare
@@ -49,32 +48,32 @@ void Bluetooth_Callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
     switch (event)
     {
     case ESP_SPP_INIT_EVT:
-        Serial.println("SPP is inited");
+        //Serial.println("SPP is inited");
         BT_EVENT = "SPP INITED";
         break;
     case ESP_SPP_START_EVT:
-        Serial.println("SPP server started");
+        //Serial.println("SPP server started");
         BT_EVENT = "SPP STARTED";
         break;
     case ESP_SPP_SRV_OPEN_EVT:
-        Serial.println("Client Connected");
+        //Serial.println("Client Connected");
         BT_EVENT = "Client OK";
         break;
     case ESP_SPP_CLOSE_EVT:
-        Serial.println("Client disconnected");
+        //Serial.println("Client disconnected");
         BT_EVENT = "Client lost";
         break;
     case ESP_SPP_DATA_IND_EVT:
-        Serial.println("SPP  received data");
+        //Serial.println("SPP  received data");
         BT_EVENT = "DATA receiving";
         break;
     case ESP_SPP_WRITE_EVT:
-        Serial.println("SPP  write data");
+        //Serial.println("SPP  write data");
         BT_EVENT = "DATA writing";
         break;
     default:
-        Serial.print("Unhandle Event: ");
-        Serial.println(event);
+        //Serial.print("Unhandle Event: ");
+        //Serial.println(event);
         break;
     }
 }
@@ -82,7 +81,7 @@ void Bluetooth_Callback(esp_spp_cb_event_t event, esp_spp_cb_param_t *param)
 void onOTAStart()
 {
     // Log when OTA has started
-    Serial.println("OTA update started!");
+    //Serial.println("OTA update started!");
     // <Add your own code here>
 }
 
@@ -92,7 +91,7 @@ void onOTAProgress(size_t current, size_t final)
     if (millis() - ota_progress_millis > 1000)
     {
         ota_progress_millis = millis();
-        Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+        //Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
     }
 }
 
@@ -101,11 +100,11 @@ void onOTAEnd(bool success)
     // Log when OTA has finished
     if (success)
     {
-        Serial.println("OTA update finished successfully!");
+        //Serial.println("OTA update finished successfully!");
     }
     else
     {
-        Serial.println("There was an error during OTA update!");
+        //Serial.println("There was an error during OTA update!");
     }
     // <Add your own code here>
 }
@@ -120,7 +119,7 @@ String IpAddressToString(const IPAddress &ipAddress)
 
 String processor(const String &var)
 {
-    // Serial.println(var);
+    // //Serial.println(var);
     if (var == "version")
     {
         return VERSION;
@@ -140,11 +139,11 @@ void startBluetooth()
     // Setup bluetooth device name as
     if (!SerialBT.begin(deviceName))
     {
-        Serial.println("An error occurred during initialize");
+        //Serial.println("An error occurred during initialize");
     }
     else
     {
-        Serial.println("Bluetooth is ready for pairing");
+        //Serial.println("Bluetooth is ready for pairing");
         // Use FIXED pin-code for Legacy Pairing
         char pinCode[5];
         memset(pinCode, 0, sizeof(pinCode));
@@ -159,12 +158,12 @@ void startBluetooth()
     {
 
         delay(1000);
-        Serial.println("wifi not ready");
+        //Serial.println("wifi not ready");
 
         if (tries++ > 2)
         {
             // init wifi
-            Serial.println("WiFi.mode(AP):");
+            //Serial.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
             WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
@@ -201,31 +200,28 @@ void ReadSerialTask(void *e)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
                 // cmd_check = String((char *)serialReadBuffer);
-                // Serial.println(cmd_check);
-                if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
+                // //Serial.println(cmd_check);
+                while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
                 {
-                    while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
+                    if (serialReadBuffer[j] == '\n')
                     {
-                        if (serialReadBuffer[j] == '\n')
-                        {
-                            j = 0; // clearing
-                            break; // 跳出循环
-                        }
-                        else
-                        {
-                            serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-                            j++;
-                        }
+                        j = 0; // clearing
+                        break; // 跳出循环
                     }
-                    sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    Serial.printf(BLE_Send_out);
-                    SerialBT.printf(BLE_Send_out);
+                    else
+                    {
+                        serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                        j++;
+                    }
                 }
+                sprintf(BLE_Send_out, "%s\n", serialReadBuffer_clean_OUT);
+                //Serial.printf(BLE_Send_out);
+                SerialBT.printf(BLE_Send_out);
                 xSemaphoreGive(xserialReadBufferMutex);
             }
-
-            delay(50);
         }
+
+        delay(50);
     }
 }
 
@@ -242,32 +238,32 @@ void ReadBtTask(void *e)
             {
                 auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
                 Serial_in.write(bleReadBuffer, count);
-                // Serial.write(bleReadBuffer, count);
+                //Serial.write(bleReadBuffer, count);
                 xSemaphoreGive(xserialReadBufferMutex);
             }
             delay(50);
         }
     }
 }
-// Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
-void TASK_Send_READ_CMDtoTC4(void *pvParameters)
-{
-    (void)pvParameters;
-    TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
-    String cmd;
-    xLastWakeTime = xTaskGetTickCount();
+// // Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
+// void TASK_Send_READ_CMDtoTC4(void *pvParameters)
+// {
+//     (void)pvParameters;
+//     TickType_t xLastWakeTime;
+//     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
+//     String cmd;
+//     xLastWakeTime = xTaskGetTickCount();
 
-    for (;;)
-    {
-        vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
-        {
-            Serial_in.printf("READ\n");
-            xSemaphoreGive(xserialReadBufferMutex);
-        }
-    }
-}
+//     for (;;)
+//     {
+//         vTaskDelayUntil(&xLastWakeTime, xIntervel);
+//         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+//         {
+//             Serial_in.printf("READ\n");
+//             xSemaphoreGive(xserialReadBufferMutex);
+//         }
+//     }
+// }
 
 void setup()
 {
@@ -279,24 +275,24 @@ void setup()
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-    Serial.printf("Disable watchdog timers\n");
+    //Serial.printf("Disable watchdog timers\n");
 
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
-    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
+    Serial_in.begin(BAUDRATE, SERIAL_8N1, 16, 17);
 
     // Start BLE
     startBluetooth();
 
     // Start tasks
     xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
-    Serial.printf("Start ReadSerialTask\n");
+    //Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
-    Serial.printf("Start ReadBtTask\n");
+    //Serial.printf("Start ReadBtTask\n");
     // xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
-    // Serial.printf("Start Send_READ_Task\n");
+    // //Serial.printf("Start Send_READ_Task\n");
 
     server.on("/", HTTP_GET, []()
               { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
@@ -307,13 +303,10 @@ void setup()
     ElegantOTA.onEnd(onOTAEnd);
 
     server.begin();
-    Serial.println("HTTP server started");
+    //Serial.println("HTTP server started");
 }
 void loop()
 {
-    // This task is not used
-    // vTaskDelete(NULL);
-
     server.handleClient();
     ElegantOTA.loop();
 }
