@@ -72,7 +72,7 @@
 
 ////////////////////
 // BAUD Rate for serial communications
-#define BAUD 115200
+#define BAUD 9600
 
 ////////////////////
 // Analogue inputs (optional)
