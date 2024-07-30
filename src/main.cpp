@@ -40,7 +40,7 @@ unsigned long ota_progress_millis = 0;
 void onOTAStart()
 {
     // Log when OTA has started
-    Serial.println("OTA update started!");
+    // Serial.println("OTA update started!");
     // <Add your own code here>
 }
 
@@ -50,7 +50,7 @@ void onOTAProgress(size_t current, size_t final)
     if (millis() - ota_progress_millis > 1000)
     {
         ota_progress_millis = millis();
-        Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+        // Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
     }
 }
 
@@ -59,11 +59,11 @@ void onOTAEnd(bool success)
     // Log when OTA has finished
     if (success)
     {
-        Serial.println("OTA update finished successfully!");
+        // Serial.println("OTA update finished successfully!");
     }
     else
     {
-        Serial.println("There was an error during OTA update!");
+        // Serial.println("There was an error during OTA update!");
     }
     // <Add your own code here>
 }
@@ -78,7 +78,7 @@ String IpAddressToString(const IPAddress &ipAddress)
 
 String processor(const String &var)
 {
-    // Serial.println(var);
+    // //Serial.println(var);
     if (var == "version")
     {
         return VERSION;
@@ -101,19 +101,19 @@ void startBluetooth()
     {
 
         delay(1000);
-        Serial.println("wifi not ready");
+        // Serial.println("wifi not ready");
 
         if (tries++ > 2)
         {
             // init wifi
-            Serial.println("WiFi.mode(AP):");
+            // Serial.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
             WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
         }
     }
     // show AP's IP
-    Serial.printf("IP:");
+    // Serial.printf("IP:");
     if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
     {
         Serial.println(IpAddressToString(WiFi.softAPIP()));
@@ -160,7 +160,7 @@ void ReadSerialTask(void *e)
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    Serial.printf(BLE_Send_out);
+                    // Serial.printf(BLE_Send_out);
                     SerialBT.printf(BLE_Send_out);
                 }
                 xSemaphoreGive(xserialReadBufferMutex);
@@ -184,7 +184,7 @@ void ReadBtTask(void *e)
             {
                 auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
                 Serial_in.write(bleReadBuffer, count);
-                // Serial.write(bleReadBuffer, count);
+                Serial.write(bleReadBuffer, count);
                 xSemaphoreGive(xserialReadBufferMutex);
             }
             delay(50);
@@ -221,7 +221,7 @@ void setup()
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-    Serial.printf("Disable watchdog timers\n");
+    // Serial.printf("Disable watchdog timers\n");
 
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
@@ -234,11 +234,11 @@ void setup()
 
     // Start tasks
     xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
-    Serial.printf("Start ReadSerialTask\n");
+    // Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
-    Serial.printf("Start ReadBtTask\n");
+    // Serial.printf("Start ReadBtTask\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
-    Serial.printf("Start Send_READ_Task\n");
+    // Serial.printf("Start Send_READ_Task\n");
 
     server.on("/", HTTP_GET, []()
               { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
@@ -249,13 +249,10 @@ void setup()
     ElegantOTA.onEnd(onOTAEnd);
 
     server.begin();
-    Serial.println("HTTP server started");
+    // Serial.println("HTTP server started");
 }
 void loop()
 {
-    // This task is not used
-    // vTaskDelete(NULL);
-
     server.handleClient();
     ElegantOTA.loop();
 }
