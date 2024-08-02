@@ -174,6 +174,31 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     }
 }
 
+
+// Handle root url (/)
+void handle_root()
+{
+    char index_html[2048];
+    String ver = VERSION;
+    snprintf(index_html, 2048,
+             "<html>\
+<head>\
+<title>MATCH BOX SETUP</title>\
+    </head> \
+    <body>\
+        <main>\
+        <h1 align='center'>BLE version:%s</h1>\
+        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
+        </main>\
+        </div>\
+    </body>\
+</html>\
+",
+             ver);
+    server.send(200, "text/html", index_html);
+}
+
+
 void setup()
 {
 
@@ -258,8 +283,7 @@ void setup()
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
 
-    server.on("/", []()
-              { server.send(200, "text/plain", "Hi! This is ElegantOTA Demo."); });
+    server.on("/", handle_root);
 
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
