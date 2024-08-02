@@ -1,4 +1,4 @@
-,// cmndreader.cpp
+// cmndreader.cpp
 //----------------
 
 // code that defines specific commands for aArtisan

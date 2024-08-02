@@ -15,7 +15,7 @@
 // Roasting software
 // Comment out all if using TC4 stand alone
 //#define ROASTLOGGER
-#define ARTISAN
+//#define ARTISAN
 //#define ANDROID
 
 ////////////////////
@@ -34,7 +34,7 @@
 // LCD Options
 // Choose ONE of the following LCD options if using an LCD
 //#define LCDAPTER // if the I2C LCDapter board is to be used
-#define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
+//#define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
 //#define LCD_PARALLEL // if using a parallel LCD screen
 
 #define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
@@ -72,7 +72,7 @@
 
 ////////////////////
 // BAUD Rate for serial communications
-#define BAUD 115200
+#define BAUD 9600
 
 ////////////////////
 // Analogue inputs (optional)
@@ -94,10 +94,10 @@
 // PID Control Options
 #define PID_CONTROL
 #define PID_CHAN 1 // physical channel for PID input (corresponding to thermocouple inputs T1-T4)
-#define CT 1000 // default cycle time for the PID, in ms
-#define PRO 2.10 // initial proportional parameter
-#define INT 0.12 // initial integral parameter
-#define DER 5.00 // initial derivative parameter
+#define CT 1500 // default cycle time for the PID, in ms
+#define PRO 3.20 // initial proportional parameter
+#define INT 0.17 // initial integral parameter
+#define DER 8.10 // initial derivative parameter
 
 //#define POM // enable Proportional on Measurement (NOTE: PID PARAMETERS WILL REQUIRE CHANGING). Disable for Proportional on Error.
 
@@ -173,7 +173,7 @@
 //#define ACKS_ON
 
 //This turns on the Serial sent out data of TC4 how is running ,so that extract modules can sync the running data with TC4 
-#define DATA_ACKS 
+//#define DATA_ACKS 
 
 ////////////////////
 // Output Pin Setup
