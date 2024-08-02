@@ -245,25 +245,28 @@ void ReadBtTask(void *e)
         }
     }
 }
-// // Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
-// void TASK_Send_READ_CMDtoTC4(void *pvParameters)
-// {
-//     (void)pvParameters;
-//     TickType_t xLastWakeTime;
-//     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
-//     String cmd;
-//     xLastWakeTime = xTaskGetTickCount();
-
-//     for (;;)
-//     {
-//         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-//         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
-//         {
-//             Serial_in.printf("READ\n");
-//             xSemaphoreGive(xserialReadBufferMutex);
-//         }
-//     }
-// }
+// Handle root url (/)
+void handle_root()
+{
+    char index_html[2048];
+    String ver = VERSION;
+    snprintf(index_html, 2048,
+             "<html>\
+<head>\
+<title>MATCH BOX SETUP</title>\
+    </head> \
+    <body>\
+        <main>\
+        <h1 align='center'>BLE version:%s</h1>\
+        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
+        </main>\
+        </div>\
+    </body>\
+</html>\
+",
+             ver);
+    server.send(200, "text/html", index_html);
+}
 
 void setup()
 {
@@ -294,8 +297,7 @@ void setup()
     // xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
     // //Serial.printf("Start Send_READ_Task\n");
 
-    server.on("/", HTTP_GET, []()
-              { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
+    server.on("/", handle_root);
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
     ElegantOTA.onStart(onOTAStart);
