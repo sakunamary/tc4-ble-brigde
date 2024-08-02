@@ -76,16 +76,29 @@ String IpAddressToString(const IPAddress &ipAddress)
            String(ipAddress[3]);
 }
 
-String processor(const String &var)
+// Handle root url (/)
+void handle_root()
 {
-    // //Serial.println(var);
-    if (var == "version")
-    {
-        return VERSION;
-    }
-
-    return String();
+    char index_html[2048];
+    String ver = VERSION;
+    snprintf(index_html, 2048,
+             "<html>\
+<head>\
+<title>MATCH BOX SETUP</title>\
+    </head> \
+    <body>\
+        <main>\
+        <h1 align='center'>BLE version:%s</h1>\
+        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
+        </main>\
+        </div>\
+    </body>\
+</html>\
+",
+             ver);
+    server.send(200, "text/html", index_html);
 }
+
 void startBluetooth()
 {
     byte tries = 0;
@@ -240,8 +253,7 @@ void setup()
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
     // Serial.printf("Start Send_READ_Task\n");
 
-    server.on("/", HTTP_GET, []()
-              { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
+    server.on("/", handle_root);
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
     ElegantOTA.onStart(onOTAStart);
