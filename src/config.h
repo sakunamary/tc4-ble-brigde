@@ -13,4 +13,8 @@
 
 const int BUFFER_SIZE = 128;
 
+SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
+QueueHandle_t queueCMD_BLE = xQueueCreate(8, sizeof(char[BLE_BUFFER_SIZE]));
+
+
 #endif
