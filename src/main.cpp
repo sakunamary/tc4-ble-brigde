@@ -22,11 +22,12 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ElegantOTA.h>
+#include <ESP32Time.h>
 
 BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
-
+ESP32Time rtc;
 WebServer server(80);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
@@ -66,6 +67,29 @@ void onOTAEnd(bool success)
         // Serial.println("There was an error during OTA update!");
     }
     // <Add your own code here>
+}
+
+// Handle root url (/)
+void handle_root()
+{
+    char index_html[2048];
+    String ver = VERSION;
+    snprintf(index_html, 2048,
+             "<html>\
+<head>\
+<title>MATCH BOX SETUP</title>\
+    </head> \
+    <body>\
+        <main>\
+        <h1 align='center'>BLE version:%s</h1>\
+        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
+        </main>\
+        </div>\
+    </body>\
+</html>\
+",
+             ver);
+    server.send(200, "text/html", index_html);
 }
 
 String IpAddressToString(const IPAddress &ipAddress)
@@ -211,6 +235,24 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     }
 }
 
+// Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
+void TASK_TIMER(void *pvParameters)
+{
+    (void)pvParameters;
+    TickType_t xLastWakeTime;
+    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
+    String cmd;
+    xLastWakeTime = xTaskGetTickCount();
+    rtc.setTime(1609459200); // 1st Jan 2021 00:00:00
+    for (;;)
+    {
+        vTaskDelayUntil(&xLastWakeTime, xIntervel);
+        Serail.printf("stopwath: %d:%d\n", rtc.getMinute(), rtc.getSecond());
+        // rtc.getSecond();
+        // rtc.getMinute();
+    }
+}
+
 void setup()
 {
 
@@ -222,7 +264,7 @@ void setup()
     rtc_wdt_protect_off();
     rtc_wdt_disable();
     // Serial.printf("Disable watchdog timers\n");
-
+    rtc.setTime(1609459200); // 1st Jan 2021 00:00:00
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
@@ -239,9 +281,11 @@ void setup()
     // Serial.printf("Start ReadBtTask\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
     // Serial.printf("Start Send_READ_Task\n");
+    xTaskCreate(TASK_TIMER, "TASK_TIMER", 10240, NULL, 1, NULL);
+    // Serial.printf("Start Send_READ_Task\n");
+    vTaskSuspend(TASK_TIMER);
 
-    server.on("/", HTTP_GET, []()
-              { server.send(200, "text/plain", "TO upgrade firmware -> http://192.168.4.1/update"); });
+    server.on("/", handle_root);
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
     ElegantOTA.onStart(onOTAStart);
