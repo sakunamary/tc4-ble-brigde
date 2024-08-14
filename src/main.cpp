@@ -24,15 +24,17 @@
 #include <ElegantOTA.h>
 #include <StopWatch.h>
 
- #include <Adafruit_GFX.h>
- #include <Adafruit_SSD1306.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <U8g2_for_Adafruit_GFX.h>
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
-#define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 
 BleSerial SerialBT;
 String local_IP;
@@ -68,6 +70,8 @@ void onOTAProgress(size_t current, size_t final)
     if (millis() - ota_progress_millis > 1000)
     {
         ota_progress_millis = millis();
+        // u8g2_font_percent_circle_25_hn
+
         // Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
     }
 }
@@ -264,10 +268,25 @@ void TASK_TIMER(void *pvParameters)
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
+    char time[5];
     while (1)
     {
-            vTaskDelayUntil(&xLastWakeTime, xIntervel);
-            Serial.printf("Roaset time %02d:%02d\n", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
+        vTaskDelayUntil(&xLastWakeTime, xIntervel);
+
+        display.clearDisplay();
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_all_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+        u8g2_for_adafruit_gfx.setFontMode(1);                          // use u8g2 transparent mode (this is default)
+        u8g2_for_adafruit_gfx.setFontDirection(0);                     // left to right (this is default)
+        u8g2_for_adafruit_gfx.setForegroundColor(WHITE);               // apply Adafruit GFX color
+        u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x007b);
+
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_maniac_tn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+
+        sprintf(time, "%02d:%02d", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
+        u8g2_for_adafruit_gfx.drawStr(42, 27, time);
+
+        display.display();
+        // Serial.printf("Roaset time %02d:%02d\n", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
     }
 }
 
@@ -345,7 +364,7 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                         sw_secs.reset();
                         sw_secs.start();
                         vTaskResume(xTask_TIMER);
-                        //xTaskNotify(xTask_TIMER, 0, eIncrement);
+                        // xTaskNotify(xTask_TIMER, 0, eIncrement);
                         Serial.printf("PID is ON\n"); // for debug
                     }
                     else if (CMD_Data[1] == "OFF")
@@ -374,10 +393,23 @@ void setup()
     rtc_wdt_protect_off();
     rtc_wdt_disable();
     xserialReadBufferMutex = xSemaphoreCreateMutex();
-    sw_mins.start();
+
     sw_secs.start();
-    
-    display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)
+    display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
+    u8g2_for_adafruit_gfx.begin(display); // connect u8g2 procedures to Adafruit GFX
+
+    display.clearDisplay();
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_all_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+    u8g2_for_adafruit_gfx.setFontMode(1);                          // use u8g2 transparent mode (this is default)
+    u8g2_for_adafruit_gfx.setFontDirection(0);                     // left to right (this is default)
+    u8g2_for_adafruit_gfx.setForegroundColor(WHITE);               // apply Adafruit GFX color
+    u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x007b);
+
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_maniac_tn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+    u8g2_for_adafruit_gfx.drawStr(42, 27, "00:00");
+
+    display.display();
+
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
