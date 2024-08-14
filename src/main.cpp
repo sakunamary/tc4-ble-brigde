@@ -34,14 +34,10 @@
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-
-
 BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 WebServer server(80);
-
-StopWatch sw_mins(StopWatch::MINUTES);
 StopWatch sw_secs(StopWatch::SECONDS);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
