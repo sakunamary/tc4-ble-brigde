@@ -22,6 +22,8 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ElegantOTA.h>
+#include <StopWatch.h>
+
 // #include <Wire.h>
 // #include <Adafruit_GFX.h>
 // #include <Adafruit_SSD1306.h>
@@ -30,6 +32,9 @@ BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 WebServer server(80);
+
+StopWatch sw_mins(StopWatch::MINUTES);
+StopWatch sw_secs(StopWatch::SECONDS);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
@@ -44,6 +49,7 @@ static TaskHandle_t xTask_TIMER = NULL;
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
+unsigned long stopwatch_millis = 0;
 
 void onOTAStart()
 {
@@ -254,14 +260,12 @@ void TASK_TIMER(void *pvParameters)
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
-    for (;;)
+    while (1)
     {
-        vTaskDelayUntil(&xLastWakeTime, xIntervel);
-             Serial.printf("Start stopwatch\n");
+            vTaskDelayUntil(&xLastWakeTime, xIntervel);
+            Serial.printf("Roaset time %02d:%02d\n", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
     }
 }
- 
-
 
 void TASK_BLE_CMD_handle(void *pvParameters)
 {
@@ -313,9 +317,9 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     }
                     CMD_String.trim();
                     CMD_String.toUpperCase();
-// #if defined(DEBUG_MODE)
-//                     // Serial.println(CMD_String); // for debug
-// #endif
+                    // #if defined(DEBUG_MODE)
+                    //                     // Serial.println(CMD_String); // for debug
+                    // #endif
                     // cmd from BLE cleaning
                     StringTokenizer BLE_CMD(CMD_String, ",");
 
@@ -334,17 +338,19 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                 {
                     if (CMD_Data[1] == "ON")
                     {
-                    vTaskResume(xTask_TIMER);
-                    Serial.printf("PID is ON\n"); // for debug
-
+                        sw_secs.reset();
+                        sw_secs.start();
+                        vTaskResume(xTask_TIMER);
+                        //xTaskNotify(xTask_TIMER, 0, eIncrement);
+                        Serial.printf("PID is ON\n"); // for debug
                     }
                     else if (CMD_Data[1] == "OFF")
                     {
-
-                    Serial.printf("PID is OFF\n"); // for debug
-                    vTaskSuspend(xTask_TIMER);
+                        Serial.printf("PID is OFF\n"); // for debug
+                        sw_secs.stop();
+                        sw_secs.reset();
+                        vTaskSuspend(xTask_TIMER);
                     }
-
                 }
                 // END of  big handle case switch
                 delay(50);
@@ -363,9 +369,9 @@ void setup()
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-    // Serial.printf("Disable watchdog timers\n");
-    //rtc.setTime(1609459200); // 1st Jan 2021 00:00:00
     xserialReadBufferMutex = xSemaphoreCreateMutex();
+    sw_mins.start();
+    sw_secs.start();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
