@@ -22,12 +22,13 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ElegantOTA.h>
-#include <ESP32Time.h>
+// #include <Wire.h>
+// #include <Adafruit_GFX.h>
+// #include <Adafruit_SSD1306.h>
 
 BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
-ESP32Time rtc;
 WebServer server(80);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
@@ -36,7 +37,7 @@ String CMD_Data[6];
 byte tries;
 
 SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
-QueueHandle_t queueCMD_BLE = xQueueCreate(8, sizeof(char[BLE_BUFFER_SIZE]));
+QueueHandle_t queueCMD_BLE = xQueueCreate(8, sizeof(uint8_t[BUFFER_SIZE]));
 static TaskHandle_t xTASK_BLE_CMD_handle = NULL;
 static TaskHandle_t xTask_TIMER = NULL;
 
@@ -126,6 +127,7 @@ void startBluetooth()
     // Init BLE Serial
     SerialBT.begin(deviceName);
     SerialBT.setTimeout(10);
+    Serial.println("BTSerial is OK");
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -159,7 +161,7 @@ void startBluetooth()
 void ReadBtTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     while (true)
     {
         if (SerialBT.available())
@@ -168,11 +170,10 @@ void ReadBtTask(void *e)
             {
                 auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
                 Serial_in.write(bleReadBuffer, count);
-                Serial.write(bleReadBuffer, count);
-                xSemaphoreGive(xserialReadBufferMutex);
-
-                xQueueSend(queueCMD_BLE, &bleReadBuffer, 100); // 串口数据发送至队列
+                // Serial.write(bleReadBuffer, count);
+                xQueueSend(queueCMD_BLE, &bleReadBuffer, xIntervel); // 串口数据发送至队列
                 xTaskNotify(xTASK_BLE_CMD_handle, 0, eIncrement);
+                xSemaphoreGive(xserialReadBufferMutex);
             }
             delay(50);
         }
@@ -183,7 +184,7 @@ void ReadBtTask(void *e)
 void ReadSerialTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
     String cmd_check;
@@ -239,29 +240,28 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
         {
             Serial_in.printf("READ\n");
-            // Serial.printf("READ\n");
             xSemaphoreGive(xserialReadBufferMutex);
         }
     }
 }
 
-// Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
+//
 void TASK_TIMER(void *pvParameters)
 {
     (void)pvParameters;
+    uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
+    BaseType_t xResult;
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
-    String cmd;
     xLastWakeTime = xTaskGetTickCount();
-    rtc.setTime(1609459200); // 1st Jan 2021 00:00:00
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        Serial.printf("stopwath: %d:%d\n", rtc.getMinute(), rtc.getSecond());
-        // rtc.getSecond();
-        // rtc.getMinute();
+             Serial.printf("Start stopwatch\n");
     }
 }
+ 
+
 
 void TASK_BLE_CMD_handle(void *pvParameters)
 {
@@ -273,7 +273,7 @@ void TASK_BLE_CMD_handle(void *pvParameters)
     uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
     BaseType_t xResult;
     TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 150 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
     int i = 0;
     int j = 0;
     String TC4_data_String;
@@ -313,17 +313,16 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     }
                     CMD_String.trim();
                     CMD_String.toUpperCase();
-#if defined(DEBUG_MODE)
-                    Serial.println(CMD_String); // for debug
-#endif
-
+// #if defined(DEBUG_MODE)
+//                     // Serial.println(CMD_String); // for debug
+// #endif
                     // cmd from BLE cleaning
                     StringTokenizer BLE_CMD(CMD_String, ",");
 
                     while (BLE_CMD.hasNext())
                     {
                         CMD_Data[i] = BLE_CMD.nextToken(); // prints the next token in the string
-                        Serial.println(CMD_Data[i]);
+                        // Serial.println(CMD_Data[i]);
                         i++;
                     }
                     i = 0;
@@ -335,37 +334,17 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                 {
                     if (CMD_Data[1] == "ON")
                     {
-                        // pid_status = true;
-                        // Heat_pid_controller.SetMode(AUTOMATIC);
-                        // Heat_pid_controller.start();
-                        // #if defined(DEBUG_MODE)
-                        Serial.printf("PID is ON\n"); // for debug
-                        // #endif
+                    vTaskResume(xTask_TIMER);
+                    Serial.printf("PID is ON\n"); // for debug
+
                     }
                     else if (CMD_Data[1] == "OFF")
                     {
-                        // Heat_pid_controller.SetMode(MANUAL);
-                        // // Heat_pid_controller.stop();
-                        // // #if defined(DEBUG_MODE)
-                        Serial.printf("PID is OFF\n"); // for debug
-                        // // #endif
-                        // I2C_EEPROM.get(0, pid_parm);
-                        // Heat_pid_controller.SetTunings(pid_parm.p, pid_parm.i, pid_parm.d);
-                        // Heat_pid_controller.setCoefficients(pid_parm.p, pid_parm.i, pid_parm.d);
-                        // pid_status = false;
-                        // pid_sv = 0;
-                    }
-                    else if (CMD_Data[1] == "TUNE")
-                    {
-                        // Heat_pid_controller.SetMode(MANUAL);
-                        // pid_status = false;
-                        // pid_sv = 0;
 
-                        // vTaskResume(xTask_PID_autotune);
-                        // delay(100);
-                        // xTaskNotify(xTask_PID_autotune, 0, eIncrement); // 通知处理任务干活
-                        // vTaskSuspend(xTASK_BLE_CMD_handle);
+                    Serial.printf("PID is OFF\n"); // for debug
+                    vTaskSuspend(xTask_TIMER);
                     }
+
                 }
                 // END of  big handle case switch
                 delay(50);
@@ -385,7 +364,7 @@ void setup()
     rtc_wdt_protect_off();
     rtc_wdt_disable();
     // Serial.printf("Disable watchdog timers\n");
-    rtc.setTime(1609459200); // 1st Jan 2021 00:00:00
+    //rtc.setTime(1609459200); // 1st Jan 2021 00:00:00
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
@@ -397,19 +376,19 @@ void setup()
 
     // Start tasks
     Serial.printf("Start ReadSerialTask\n");
-    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL); // read serial(TC4) data ,and send to BLE
+    xTaskCreate(ReadSerialTask, "ReadSerialTask", 1024 * 4, NULL, 1, NULL); // read serial(TC4) data ,and send to BLE
 
     Serial.printf("Start ReadBtTask\n");
-    xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL); // read BLE cmnd
+    xTaskCreate(ReadBtTask, "ReadBtTask", 1024 * 4, NULL, 1, NULL); // read BLE cmnd
 
     Serial.printf("Start Send_READ_Task\n");
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL); // keep sending READ cmnd to TC4 every 1500ms
+    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 1024 * 2, NULL, 1, NULL); // keep sending READ cmnd to TC4 every 1500ms
 
     Serial.printf("Start TASK_BLE_CMD_handle\n");
     xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 1, &xTASK_BLE_CMD_handle); // once get cmnd form BLE service then do something
 
-    Serial.printf("Start Send_READ_Task\n");
-    xTaskCreate(TASK_TIMER, "TASK_TIMER", 10240, NULL, 1, &xTask_TIMER); // stopwatch task
+    Serial.printf("Start TASK_TIMER\n");
+    xTaskCreate(TASK_TIMER, "TASK_TIMER", 1024 * 4, NULL, 1, &xTask_TIMER); // stopwatch task
     vTaskSuspend(xTask_TIMER);
 
     server.on("/", handle_root);
@@ -427,3 +406,4 @@ void loop()
     server.handleClient();
     ElegantOTA.loop();
 }
+//

@@ -10,6 +10,7 @@
             "includePath": [
                 "/Users/work/Documents/Github/tc4-ble-brigde/include",
                 "/Users/work/Documents/Github/tc4-ble-brigde/src",
+                "/Users/work/Documents/Github/tc4-ble-brigde/lib/StringTokenizer",
                 "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/ESP32Time",
                 "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/ElegantOTA/src",
                 "/Users/work/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
@@ -217,7 +218,6 @@
                 "/Users/work/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/dio_qspi/include",
                 "/Users/work/.platformio/packages/framework-arduinoespressif32/cores/esp32",
                 "/Users/work/.platformio/packages/framework-arduinoespressif32/variants/nodemcu-32s",
-                "/Users/work/Documents/Github/tc4-ble-brigde/lib/StringTokenizer",
                 "/Users/work/Documents/Github/tc4-ble-brigde/lib/cmndproc",
                 "/Users/work/Documents/Github/tc4-ble-brigde/lib/cmndreader",
                 "/Users/work/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
@@ -254,6 +254,7 @@
                 "path": [
                     "/Users/work/Documents/Github/tc4-ble-brigde/include",
                     "/Users/work/Documents/Github/tc4-ble-brigde/src",
+                    "/Users/work/Documents/Github/tc4-ble-brigde/lib/StringTokenizer",
                     "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/ESP32Time",
                     "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/ElegantOTA/src",
                     "/Users/work/.platformio/packages/framework-arduinoespressif32/libraries/Update/src",
@@ -461,7 +462,6 @@
                     "/Users/work/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32/dio_qspi/include",
                     "/Users/work/.platformio/packages/framework-arduinoespressif32/cores/esp32",
                     "/Users/work/.platformio/packages/framework-arduinoespressif32/variants/nodemcu-32s",
-                    "/Users/work/Documents/Github/tc4-ble-brigde/lib/StringTokenizer",
                     "/Users/work/Documents/Github/tc4-ble-brigde/lib/cmndproc",
                     "/Users/work/Documents/Github/tc4-ble-brigde/lib/cmndreader",
                     "/Users/work/.platformio/packages/framework-arduinoespressif32/libraries/ArduinoOTA/src",
