@@ -9,6 +9,20 @@ Supports: WebSocket, SSE, Authentication, Arduino Json 7, File Upload, Static Fi
 
 This fork is based on [yubox-node-org/ESPAsyncWebServer](https://github.com/yubox-node-org/ESPAsyncWebServer) and includes all the concurrency fixes.
 
+## Coordinate and dependencies:
+
+**WARNING** The library name was changed from `ESP Async WebServer` to `ESPAsyncWebServer` as per the Arduino Lint recommendations.
+
+```
+mathieucarbou/ESPAsyncWebServer @ 3.1.4
+```
+
+Dependency:
+
+- **ESP32**: `mathieucarbou/AsyncTCP @ 3.2.4` (Arduino IDE: [https://github.com/mathieucarbou/AsyncTCP#v3.2.4](https://github.com/mathieucarbou/AsyncTCP/releases/tag/v3.2.0))
+- **ESP8266**: `esphome/ESPAsyncTCP-esphome @ 2.0.0` (Arduino IDE: [https://github.com/mathieucarbou/esphome-ESPAsyncTCP#v2.0.0](https://github.com/mathieucarbou/esphome-ESPAsyncTCP/releases/tag/v2.0.0))
+- **RP2040**: `khoih-prog/AsyncTCP_RP2040W @ 1.2.0` (Arduino IDE: [https://github.com/khoih-prog/AsyncTCP_RP2040W#v1.2.0](https://github.com/khoih-prog/AsyncTCP_RP2040W/releases/tag/v1.2.0))
+
 ## Changes in this fork
 
 - [@ayushsharma82](https://github.com/ayushsharma82) and [@mathieucarbou](https://github.com/mathieucarbou): Add RP2040 support ([#31](https://github.com/mathieucarbou/ESPAsyncWebServer/pull/31))
@@ -22,11 +36,12 @@ This fork is based on [yubox-node-org/ESPAsyncWebServer](https://github.com/yubo
 - [@mathieucarbou](https://github.com/mathieucarbou): Arduino 3 / ESP-IDF 5.1 compatibility
 - [@mathieucarbou](https://github.com/mathieucarbou): Arduino Json 7 compatibility and backward compatible with 6 and 6 (changes in `AsyncJson.h`). The API to use Json has not changed. These are only internal changes.
 - [@mathieucarbou](https://github.com/mathieucarbou): CI
-- [@mathieucarbou](https://github.com/mathieucarbou): Depends on `mathieucarbou/AsyncTCP @ 3.2.3`
+- [@mathieucarbou](https://github.com/mathieucarbou): Depends on `mathieucarbou/AsyncTCP @ 3.2.4`
 - [@mathieucarbou](https://github.com/mathieucarbou): Deployed in PlatformIO registry and Arduino IDE library manager
 - [@mathieucarbou](https://github.com/mathieucarbou): Firmware size optimization: remove mbedtls dependency (accounts for 33KB in firmware)
 - [@mathieucarbou](https://github.com/mathieucarbou): Made DEFAULT_MAX_SSE_CLIENTS customizable
 - [@mathieucarbou](https://github.com/mathieucarbou): Made DEFAULT_MAX_WS_CLIENTS customizable
+- [@mathieucarbou](https://github.com/mathieucarbou): MessagePack Support ([#62](https://github.com/mathieucarbou/ESPAsyncWebServer/pull/62))
 - [@mathieucarbou](https://github.com/mathieucarbou): Remove filename after inline in Content-Disposition header according to RFC2183
 - [@mathieucarbou](https://github.com/mathieucarbou): Removed SPIFFSEditor to reduce library size and maintainance. SPIFF si also deprecated. If you need it, please copy the files from the original repository in your project. This fork focus on maintaining the server part and the SPIFFEditor is an application which has nothing to do inside a server library.
 - [@mathieucarbou](https://github.com/mathieucarbou): Resurrected `AsyncWebSocketMessageBuffer` and `makeBuffer()` in order to make the fork API-compatible with the original library from me-no-dev regarding WebSocket.
@@ -38,12 +53,6 @@ This fork is based on [yubox-node-org/ESPAsyncWebServer](https://github.com/yubo
 - [@vortigont](https://github.com/vortigont): Set real "Last-Modified" header based on file's LastWrite time ([#5](https://github.com/mathieucarbou/ESPAsyncWebServer/pull/5))
 - [@vortigont](https://github.com/vortigont): Some websocket code cleanup ([#29](https://github.com/mathieucarbou/ESPAsyncWebServer/pull/29))
 - [@vortigont](https://github.com/vortigont): Refactor code - replace DYI structs with STL objects  ([#39](https://github.com/mathieucarbou/ESPAsyncWebServer/pull/39))
-
-## Dependencies:
-
-- **ESP32**: `mathieucarbou/AsyncTCP @ 3.2.3` (Arduino IDE: [https://github.com/mathieucarbou/AsyncTCP#v3.2.3](https://github.com/mathieucarbou/AsyncTCP/releases/tag/v3.2.0))
-- **ESP8266**: `esphome/ESPAsyncTCP-esphome @ 2.0.0` (Arduino IDE: [https://github.com/mathieucarbou/esphome-ESPAsyncTCP#v2.0.0](https://github.com/mathieucarbou/esphome-ESPAsyncTCP/releases/tag/v2.0.0))
-- **RP2040**: `khoih-prog/AsyncTCP_RP2040W @ 1.2.0` (Arduino IDE: [https://github.com/khoih-prog/AsyncTCP_RP2040W#v1.2.0](https://github.com/khoih-prog/AsyncTCP_RP2040W/releases/tag/v1.2.0))
 
 ## Documentation
 

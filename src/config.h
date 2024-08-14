@@ -3,11 +3,11 @@
 #define __CONFIG_H__
 
 #define uS_TO_S_FACTOR 1000000 /* Conversion factor for micro seconds to seconds */
-#define BAUDRATE 9600        // serial port baudrate
+#define BAUDRATE 115200        // serial port baudrate
 
-#define VERSION "1.1.4"
+#define VERSION "1.1.5"
 
-// #define DEBUG_MODE
+#define DEBUG_MODE
 #define TX 17
 #define RX 16
 

@@ -43,7 +43,7 @@ BLECharacteristic *pTxCharacteristic;
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 String CMD_Data[6];
-
+byte tries;
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
@@ -70,6 +70,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
         int i = 0;
         while (i < rxValue.length() && rxValue.length() > 0)
         {
+            Serial.print("BLE onWrite:");
             Serial.print(rxValue[i]);
             if (rxValue[i] == 0x0A)
             {
@@ -203,7 +204,7 @@ void startBluetooth()
         if (tries++ > 2)
         {
             // init wifi
-            // Serial.println("WiFi.mode(AP):");
+            //Serial.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
             WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
@@ -230,7 +231,7 @@ void ReadSerialTask(void *e)
     const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
-    // String cmd_check;
+    String cmd_check;
     int j = 0;
     while (true)
     {
@@ -239,8 +240,8 @@ void ReadSerialTask(void *e)
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-                // cmd_check = String((char *)serialReadBuffer);
-                // Serial.println(cmd_check);
+                cmd_check = String((char *)serialReadBuffer);
+                Serial.println(cmd_check);
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
                 {
                     while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
@@ -289,6 +290,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
         {
             Serial_in.printf("READ\n");
+            Serial.printf("READ\n");
             xSemaphoreGive(xserialReadBufferMutex);
         }
     }
@@ -371,7 +373,7 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     while (BLE_CMD.hasNext())
                     {
                         CMD_Data[i] = BLE_CMD.nextToken(); // prints the next token in the string
-                        // Serial.println(CMD_Data[i]);
+                        Serial.println(CMD_Data[i]);
                         i++;
                     }
                     i = 0;
@@ -444,16 +446,17 @@ void setup()
     startBluetooth();
 
     // Start tasks
-    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);//read serial(TC4) data ,and send to BLE 
-    // Serial.printf("Start ReadSerialTask\n");
+    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 2, NULL); // read serial(TC4) data ,and send to BLE
+    Serial.printf("Start ReadSerialTask\n");
 
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL); //keep sending READ cmnd to TC4 every 1500ms
-    // Serial.printf("Start Send_READ_Task\n");
+    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 2, NULL); // keep sending READ cmnd to TC4 every 1500ms
+    Serial.printf("Start Send_READ_Task\n");
 
-    xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 1, NULL); //once get cmnd form BLE service then do something
-    // Serial.printf("Start TASK_BLE_CMD_handle\n");
-    xTaskCreate(TASK_TIMER, "TASK_TIMER", 10240, NULL, 1, &xTask_TIMER); // stopwatch task 
-    // Serial.printf("Start Send_READ_Task\n");
+    xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 3, &xTASK_BLE_CMD_handle); // once get cmnd form BLE service then do something
+    Serial.printf("Start TASK_BLE_CMD_handle\n");
+
+    xTaskCreate(TASK_TIMER, "TASK_TIMER", 10240, NULL, 1, &xTask_TIMER); // stopwatch task
+    Serial.printf("Start Send_READ_Task\n");
     vTaskSuspend(xTask_TIMER);
 
     server.on("/", handle_root);
@@ -464,7 +467,7 @@ void setup()
     ElegantOTA.onEnd(onOTAEnd);
 
     server.begin();
-    // Serial.println("HTTP server started");
+    Serial.println("HTTP server started");
 }
 void loop()
 {

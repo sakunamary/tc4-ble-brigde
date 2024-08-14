@@ -445,7 +445,7 @@ static esp_err_t _tcp_write(tcp_pcb * pcb, int8_t closed_slot, const char* data,
 static err_t _tcp_recved_api(struct tcpip_api_call_data *api_call_msg){
     tcp_api_call_t * msg = (tcp_api_call_t *)api_call_msg;
     msg->err = ERR_CONN;
-    if(msg->closed_slot == -1 || !_closed_slots[msg->closed_slot]) {
+    if(msg->closed_slot != -1 && !_closed_slots[msg->closed_slot]) {
         msg->err = 0;
         tcp_recved(msg->pcb, msg->received);
     }
@@ -1012,7 +1012,7 @@ int8_t AsyncClient::_recv(tcp_pcb* pcb, pbuf* pb, int8_t err) {
 
 int8_t AsyncClient::_poll(tcp_pcb* pcb){
     if(!_pcb){
-        log_d("pcb is NULL");
+        // log_d("pcb is NULL");
         return ERR_OK;
     }
     if(pcb != _pcb){
