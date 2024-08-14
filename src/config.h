@@ -18,6 +18,7 @@ const int BUFFER_SIZE = 64;
 static TaskHandle_t xTask_TIMER = NULL;
 static TaskHandle_t xTASK_BLE_CMD_handle = NULL;
 
+<<<<<<< HEAD
 SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
 QueueHandle_t queueCMD_BLE = xQueueCreate(8, sizeof(char[BLE_BUFFER_SIZE]));
 
@@ -28,4 +29,6 @@ QueueHandle_t queueCMD_BLE = xQueueCreate(8, sizeof(char[BLE_BUFFER_SIZE]));
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"
 
 
+=======
+>>>>>>> parent of 737e541 (update)
 #endif

@@ -37,6 +37,7 @@ WebServer server(80);
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
 
+<<<<<<< HEAD
 BLEServer *pServer = NULL;
 BLECharacteristic *pTxCharacteristic;
 
@@ -44,6 +45,9 @@ bool deviceConnected = false;
 bool oldDeviceConnected = false;
 String CMD_Data[6];
 byte tries;
+=======
+SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
+>>>>>>> parent of 737e541 (update)
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
@@ -275,6 +279,29 @@ void ReadSerialTask(void *e)
     }
 }
 
+<<<<<<< HEAD
+=======
+// Task for reading BLE Serial
+void ReadBtTask(void *e)
+{
+    (void)e;
+    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    while (true)
+    {
+        if (SerialBT.available())
+        {
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            {
+                auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+                Serial_in.write(bleReadBuffer, count);
+                Serial.write(bleReadBuffer, count);
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
+            delay(50);
+        }
+    }
+}
+>>>>>>> parent of 737e541 (update)
 // Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
 void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
@@ -314,6 +341,7 @@ void TASK_TIMER(void *pvParameters)
     }
 }
 
+<<<<<<< HEAD
 void TASK_BLE_CMD_handle(void *pvParameters)
 {
     (void)pvParameters;
@@ -424,6 +452,8 @@ void TASK_BLE_CMD_handle(void *pvParameters)
     }
 }
 
+=======
+>>>>>>> parent of 737e541 (update)
 void setup()
 {
 
