@@ -10,8 +10,8 @@
             "includePath": [
                 "/Users/work/Documents/Github/tc4-ble-brigde/include",
                 "/Users/work/Documents/Github/tc4-ble-brigde/src",
+                "/Users/work/Documents/Github/tc4-ble-brigde/lib/U8g2_for_Adafruit_GFX/src",
                 "/Users/work/Documents/Github/tc4-ble-brigde/lib/StringTokenizer",
-                "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/U8g2_for_Adafruit_GFX/src",
                 "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/Adafruit SSD1306",
                 "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/Adafruit GFX Library",
                 "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/Adafruit BusIO",
@@ -259,8 +259,8 @@
                 "path": [
                     "/Users/work/Documents/Github/tc4-ble-brigde/include",
                     "/Users/work/Documents/Github/tc4-ble-brigde/src",
+                    "/Users/work/Documents/Github/tc4-ble-brigde/lib/U8g2_for_Adafruit_GFX/src",
                     "/Users/work/Documents/Github/tc4-ble-brigde/lib/StringTokenizer",
-                    "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/U8g2_for_Adafruit_GFX/src",
                     "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/Adafruit SSD1306",
                     "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/Adafruit GFX Library",
                     "/Users/work/Documents/Github/tc4-ble-brigde/.pio/libdeps/esp32/Adafruit BusIO",

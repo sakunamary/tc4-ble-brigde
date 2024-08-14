@@ -61,16 +61,59 @@ void onOTAStart()
 {
     // Log when OTA has started
     // Serial.println("OTA update started!");
-    // <Add your own code here>
+    display.clearDisplay();
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+    u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    u8g2_for_adafruit_gfx.drawStr(32, 28, "UPDATE");
+    display.display();
 }
 
 void onOTAProgress(size_t current, size_t final)
 {
     // Log every 1 second
+    int prosess = 0;
+
     if (millis() - ota_progress_millis > 1000)
     {
         ota_progress_millis = millis();
         // u8g2_font_percent_circle_25_hn
+        display.clearDisplay();
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_percent_circle_25_hn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+
+        if ((current / final) <= 0.125)
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0030);
+        }
+
+        else if ((current / final) <= 0.25)
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0031);
+        }
+        else if ((current / final) <= 0.5)
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0032);
+        }
+        else if ((current / final) <= 0.625)
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0033);
+        }
+        else if ((current / final) <= 0.75)
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0034);
+        }
+        else if ((current / final) < -0.875)
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0035);
+        }
+        else
+        {
+            u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0036);
+        }
+
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+        u8g2_for_adafruit_gfx.drawStr(32, 28, "UPLOAD");
+        display.display();
 
         // Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
     }
@@ -81,11 +124,21 @@ void onOTAEnd(bool success)
     // Log when OTA has finished
     if (success)
     {
-        // Serial.println("OTA update finished successfully!");
+        display.clearDisplay();
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+        u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+        u8g2_for_adafruit_gfx.drawStr(32, 28, "OTA OK");
+        display.display();
     }
     else
     {
-        // Serial.println("There was an error during OTA update!");
+        display.clearDisplay();
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+        u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+        u8g2_for_adafruit_gfx.drawStr(32, 28, "ERROR");
+        display.display();
     }
     // <Add your own code here>
 }
