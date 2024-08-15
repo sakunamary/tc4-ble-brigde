@@ -77,7 +77,6 @@ void onOTAProgress(size_t current, size_t final)
     u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
     u8g2_for_adafruit_gfx.drawStr(55, 28, "OTA");
     display.display();
-
 }
 
 void onOTAEnd(bool success)
@@ -155,25 +154,13 @@ void startBluetooth()
     // Init BLE Serial
     SerialBT.begin(deviceName);
     SerialBT.setTimeout(10);
-    Serial.println("BTSerial is OK");
+    // Serial.println("BTSerial is OK");
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
 
-    while (WiFi.status() != WL_CONNECTED)
-    {
-
-        delay(1000);
-        Serial.println("wifi not ready");
-
-        if (tries++ > 1)
-        {
-            // init wifi
-            Serial.println("WiFi.mode(AP):");
-            WiFi.mode(WIFI_AP);
-            WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
-            break;
-        }
-    }
-    // show AP's IP
-    // Serial.printf("IP:");
+// show AP's IP
+#ifdef DEBUG_MODE
+    Serial.printf("IP:");
     if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
     {
         Serial.println(IpAddressToString(WiFi.softAPIP()));
@@ -184,6 +171,7 @@ void startBluetooth()
         Serial.println(IpAddressToString(WiFi.localIP()));
         local_IP = IpAddressToString(WiFi.localIP());
     }
+#endif
 }
 
 void ReadBtTask(void *e)
@@ -286,7 +274,6 @@ void TASK_TIMER(void *pvParameters)
     while (1)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-
         display.clearDisplay();
         u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_all_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
         u8g2_for_adafruit_gfx.setFontMode(1);                          // use u8g2 transparent mode (this is default)
@@ -297,7 +284,6 @@ void TASK_TIMER(void *pvParameters)
         sprintf(time, "%02d:%02d", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
         u8g2_for_adafruit_gfx.drawStr(42, 27, time);
         display.display();
-        // Serial.printf("Roaset time %02d:%02d\n", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
     }
 }
 
@@ -351,9 +337,9 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     }
                     CMD_String.trim();
                     CMD_String.toUpperCase();
-                    // #if defined(DEBUG_MODE)
-                    //                     // Serial.println(CMD_String); // for debug
-                    // #endif
+#if defined(DEBUG_MODE)
+                     Serial.println(CMD_String); // for debug
+#endif
                     // cmd from BLE cleaning
                     StringTokenizer BLE_CMD(CMD_String, ",");
 
@@ -375,7 +361,6 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                         sw_secs.reset();
                         sw_secs.start();
                         vTaskResume(xTask_TIMER);
-                        // xTaskNotify(xTask_TIMER, 0, eIncrement);
                         Serial.printf("PID is ON\n"); // for debug
                     }
                     else if (CMD_Data[1] == "OFF")
@@ -387,7 +372,6 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                         u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
                         u8g2_for_adafruit_gfx.drawStr(4, 28, "MATCHBOX");
                         display.display();
-                        //sw_secs.reset();
                     }
                 }
                 // END of  big handle case switch
