@@ -65,7 +65,7 @@ void onOTAStart()
     u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
     u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
     u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-    u8g2_for_adafruit_gfx.drawStr(32, 28, "UPDATE");
+    u8g2_for_adafruit_gfx.drawStr(34, 28, "UPDATE");
     display.display();
 }
 
@@ -77,49 +77,7 @@ void onOTAProgress(size_t current, size_t final)
     u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
     u8g2_for_adafruit_gfx.drawStr(55, 28, "OTA");
     display.display();
-    // if (millis() - ota_progress_millis > 3000)
-    // {
 
-    //     ota_progress_millis = millis();
-    //     // // u8g2_font_percent_circle_25_hn
-    //     // display.clearDisplay();
-    //     // u8g2_for_adafruit_gfx.setFont(u8g2_font_percent_circle_25_hn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-
-    //     // if ((current / final) <= 0.125)
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0030);
-    //     // }
-
-    //     // else if ((current / final) <= 0.25)
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0031);
-    //     // }
-    //     // else if ((current / final) <= 0.5)
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0032);
-    //     // }
-    //     // else if ((current / final) <= 0.625)
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0033);
-    //     // }
-    //     // else if ((current / final) <= 0.75)
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0034);
-    //     // }
-    //     // else if ((current / final) < -0.875)
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0035);
-    //     // }
-    //     // else
-    //     // {
-    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0036);
-    //     // }
-    //     // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-    //     // u8g2_for_adafruit_gfx.drawStr(32, 28, "UPLOAD");
-    //     // display.display();
-
-    //     Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
-    // }
 }
 
 void onOTAEnd(bool success)
@@ -131,7 +89,7 @@ void onOTAEnd(bool success)
         u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
         u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
         u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-        u8g2_for_adafruit_gfx.drawStr(32, 28, "OTA OK");
+        u8g2_for_adafruit_gfx.drawStr(50, 28, "DONE");
         display.display();
     }
     else
@@ -140,7 +98,7 @@ void onOTAEnd(bool success)
         u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
         u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
         u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-        u8g2_for_adafruit_gfx.drawStr(32, 28, "ERROR");
+        u8g2_for_adafruit_gfx.drawStr(42, 28, "ERROR");
         display.display();
     }
     // <Add your own code here>
@@ -335,12 +293,9 @@ void TASK_TIMER(void *pvParameters)
         u8g2_for_adafruit_gfx.setFontDirection(0);                     // left to right (this is default)
         u8g2_for_adafruit_gfx.setForegroundColor(WHITE);               // apply Adafruit GFX color
         u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x007b);
-
         u8g2_for_adafruit_gfx.setFont(u8g2_font_maniac_tn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-
         sprintf(time, "%02d:%02d", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
         u8g2_for_adafruit_gfx.drawStr(42, 27, time);
-
         display.display();
         // Serial.printf("Roaset time %02d:%02d\n", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
     }
