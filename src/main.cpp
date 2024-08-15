@@ -71,51 +71,55 @@ void onOTAStart()
 
 void onOTAProgress(size_t current, size_t final)
 {
-    // Log every 1 second
-    int prosess = 0;
+    display.clearDisplay();
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t);
+    u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    u8g2_for_adafruit_gfx.drawStr(55, 28, "OTA");
+    display.display();
+    // if (millis() - ota_progress_millis > 3000)
+    // {
 
-    if (millis() - ota_progress_millis > 3000)
-    {
-        ota_progress_millis = millis();
-        // // u8g2_font_percent_circle_25_hn
-        // display.clearDisplay();
-        // u8g2_for_adafruit_gfx.setFont(u8g2_font_percent_circle_25_hn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+    //     ota_progress_millis = millis();
+    //     // // u8g2_font_percent_circle_25_hn
+    //     // display.clearDisplay();
+    //     // u8g2_for_adafruit_gfx.setFont(u8g2_font_percent_circle_25_hn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
 
-        // if ((current / final) <= 0.125)
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0030);
-        // }
+    //     // if ((current / final) <= 0.125)
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0030);
+    //     // }
 
-        // else if ((current / final) <= 0.25)
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0031);
-        // }
-        // else if ((current / final) <= 0.5)
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0032);
-        // }
-        // else if ((current / final) <= 0.625)
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0033);
-        // }
-        // else if ((current / final) <= 0.75)
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0034);
-        // }
-        // else if ((current / final) < -0.875)
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0035);
-        // }
-        // else
-        // {
-        //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0036);
-        // }
-        // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-        // u8g2_for_adafruit_gfx.drawStr(32, 28, "UPLOAD");
-        // display.display();
+    //     // else if ((current / final) <= 0.25)
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0031);
+    //     // }
+    //     // else if ((current / final) <= 0.5)
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0032);
+    //     // }
+    //     // else if ((current / final) <= 0.625)
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0033);
+    //     // }
+    //     // else if ((current / final) <= 0.75)
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0034);
+    //     // }
+    //     // else if ((current / final) < -0.875)
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0035);
+    //     // }
+    //     // else
+    //     // {
+    //     //     u8g2_for_adafruit_gfx.drawGlyph(0, 28, 0x0036);
+    //     // }
+    //     // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    //     // u8g2_for_adafruit_gfx.drawStr(32, 28, "UPLOAD");
+    //     // display.display();
 
-        // Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
-    }
+    //     Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
+    // }
 }
 
 void onOTAEnd(bool success)
@@ -423,8 +427,12 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     {
                         Serial.printf("PID is OFF\n"); // for debug
                         sw_secs.stop();
-                        sw_secs.reset();
                         vTaskSuspend(xTask_TIMER);
+                        display.clearDisplay();
+                        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+                        u8g2_for_adafruit_gfx.drawStr(4, 28, "MATCHBOX");
+                        display.display();
+                        //sw_secs.reset();
                     }
                 }
                 // END of  big handle case switch
@@ -451,15 +459,8 @@ void setup()
     u8g2_for_adafruit_gfx.begin(display); // connect u8g2 procedures to Adafruit GFX
 
     display.clearDisplay();
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_all_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-    u8g2_for_adafruit_gfx.setFontMode(1);                          // use u8g2 transparent mode (this is default)
-    u8g2_for_adafruit_gfx.setFontDirection(0);                     // left to right (this is default)
-    u8g2_for_adafruit_gfx.setForegroundColor(WHITE);               // apply Adafruit GFX color
-    u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x007b);
-
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_maniac_tn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-    u8g2_for_adafruit_gfx.drawStr(42, 27, "00:00");
-
+    u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    u8g2_for_adafruit_gfx.drawStr(2, 28, "MATCHBOX");
     display.display();
 
     // Start Serial
@@ -471,19 +472,19 @@ void setup()
     startBluetooth();
 
     // Start tasks
-    //Serial.printf("Start ReadSerialTask\n");
+    // Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(ReadSerialTask, "ReadSerialTask", 1024 * 4, NULL, 1, NULL); // read serial(TC4) data ,and send to BLE
 
-    //Serial.printf("Start ReadBtTask\n");
+    // Serial.printf("Start ReadBtTask\n");
     xTaskCreate(ReadBtTask, "ReadBtTask", 1024 * 4, NULL, 1, NULL); // read BLE cmnd
 
-    //Serial.printf("Start Send_READ_Task\n");
+    // Serial.printf("Start Send_READ_Task\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 1024 * 2, NULL, 1, NULL); // keep sending READ cmnd to TC4 every 1500ms
 
-    //Serial.printf("Start TASK_BLE_CMD_handle\n");
+    // Serial.printf("Start TASK_BLE_CMD_handle\n");
     xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 1, &xTASK_BLE_CMD_handle); // once get cmnd form BLE service then do something
 
-    //Serial.printf("Start TASK_TIMER\n");
+    // Serial.printf("Start TASK_TIMER\n");
     xTaskCreate(TASK_TIMER, "TASK_TIMER", 1024 * 4, NULL, 1, &xTask_TIMER); // stopwatch task
     vTaskSuspend(xTask_TIMER);
 
@@ -495,7 +496,7 @@ void setup()
     ElegantOTA.onEnd(onOTAEnd);
 
     server.begin();
-    //Serial.println("HTTP server started");
+    // Serial.println("HTTP server started");
 }
 void loop()
 {
