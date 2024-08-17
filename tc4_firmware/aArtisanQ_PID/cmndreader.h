@@ -77,8 +77,8 @@
 
 // -------------------------- slew rate limitations for fan control
 #define MAX_SLEW 25 // percent per second
-#define SLEW_STEP 3 // increase in steps of 5% for smooth transition
-#define SLEW_STEP_TIME (uint32_t)(SLEW_STEP * 500 / MAX_SLEW) // min ms delay between steps
+#define SLEW_STEP 5 // increase in steps of 5% for smooth transition
+#define SLEW_STEP_TIME (uint32_t)(SLEW_STEP * 1000 / MAX_SLEW) // min ms delay between steps
 
 
 // forward declarations
