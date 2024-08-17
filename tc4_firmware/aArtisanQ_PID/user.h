@@ -34,12 +34,12 @@
 // LCD Options
 // Choose ONE of the following LCD options if using an LCD
 //#define LCDAPTER // if the I2C LCDapter board is to be used
-//#define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
+// #define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
 //#define LCD_PARALLEL // if using a parallel LCD screen
 
-#define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
+// #define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
 
-#define LCD_I2C_ADDRESS 0x27 // adjust I2C address for LCD if required. Try 0x3F, 0x20, 0x27. Not used for LCDapter.
+// #define LCD_I2C_ADDRESS 0x27 // adjust I2C address for LCD if required. Try 0x3F, 0x20, 0x27. Not used for LCDapter.
 
 
 /////////////////////
@@ -77,8 +77,8 @@
 ////////////////////
 // Analogue inputs (optional)
 // Comment out if not required
-#define ANALOGUE1 // if potentiometer connected on ANLG1
-#define ANALOGUE2 // if potentiometer connected on ANLG2
+// #define ANALOGUE1 // if potentiometer connected on ANLG1
+// #define ANALOGUE2 // if potentiometer connected on ANLG2
 
 ////////////////////
 // Duty Cycle Adjustment Increment
@@ -95,13 +95,13 @@
 #define PID_CONTROL
 #define PID_CHAN 1 // physical channel for PID input (corresponding to thermocouple inputs T1-T4)
 #define CT 1500 // default cycle time for the PID, in ms
-#define PRO 3.20 // initial proportional parameter
-#define INT 0.17 // initial integral parameter
-#define DER 8.20 // initial derivative parameter
+#define PRO 2.01 // initial proportional parameter
+#define INT 0.12 // initial integral parameter
+#define DER 5.00 // initial derivative parameter
 
 //#define POM // enable Proportional on Measurement (NOTE: PID PARAMETERS WILL REQUIRE CHANGING). Disable for Proportional on Error.
 
-#define NUM_PROFILES 2 // number of profiles stored in EEPROM
+#define NUM_PROFILES 1 // number of profiles stored in EEPROM
 
 ////////////////////
 // Heater and Fan Limits/Options
