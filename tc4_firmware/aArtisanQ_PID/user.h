@@ -20,26 +20,26 @@
 
 ////////////////////
 // Base configurations (leave only one uncommented)
-//#define CONFIG_PWM // slow PWM on OT1 (heater); fast PWM output (3.922kHz) on IO3 (DC fan); ZCD not required
-#define CONFIG_PAC2 // integral cycle control on OT1 (heater) and phase angle control on OT2 (fan); ZCD required on IO2
+#define CONFIG_PWM // slow PWM on OT1 (heater); fast PWM output (3.922kHz) on IO3 (DC fan); ZCD not required
+//#define CONFIG_PAC2 // integral cycle control on OT1 (heater) and phase angle control on OT2 (fan); ZCD required on IO2
 //#define CONFIG_PAC2_IO3HTR // fast PWM on IO3 (heater) and phase angle control on OT2 (fan); ZCD required on IO2
 //#define CONFIG_PAC2_IO3FAN // integral cycle control on OT1 (heater) and fast PWM control of IO3 (fan); ZCD required on IO2
 //#define CONFIG_PAC3 // integral cycle control on OT1 (heater) and phase angle control on OT2 (fan); ZCD required on IO3
 
 ////////////////////
 // Temperature Unit
-//#define CELSIUS // controls only the initial conditions.  Comment out for F.
+#define CELSIUS // controls only the initial conditions.  Comment out for F.
 
 ////////////////////
 // LCD Options
 // Choose ONE of the following LCD options if using an LCD
 //#define LCDAPTER // if the I2C LCDapter board is to be used
-#define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
+//#define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
 //#define LCD_PARALLEL // if using a parallel LCD screen
 
-#define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
+//#define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
 
-#define LCD_I2C_ADDRESS 0x27 // adjust I2C address for LCD if required. Try 0x3F, 0x20, 0x27. Not used for LCDapter.
+//#define LCD_I2C_ADDRESS 0x27 // adjust I2C address for LCD if required. Try 0x3F, 0x20, 0x27. Not used for LCDapter.
 
 
 /////////////////////
@@ -58,8 +58,8 @@
 /////////////////////
 // AC Power Options
 // Needed for CONFIG_PAC options
-#define FREQ60 // 60Hz
-//#define FREQ50 // 50Hz
+//#define FREQ60 // 60Hz
+#define FREQ50 // 50Hz
 
 ////////////////////
 // Thermocouple Input Options
@@ -72,7 +72,7 @@
 
 ////////////////////
 // BAUD Rate for serial communications
-#define BAUD 115200
+#define BAUD 9600
 
 ////////////////////
 // Analogue inputs (optional)
@@ -94,14 +94,14 @@
 // PID Control Options
 #define PID_CONTROL
 #define PID_CHAN 1 // physical channel for PID input (corresponding to thermocouple inputs T1-T4)
-#define CT 1000 // default cycle time for the PID, in ms
-#define PRO 5.00 // initial proportional parameter
-#define INT 0.15 // initial integral parameter
-#define DER 0.00 // initial derivative parameter
+#define CT 1500 // default cycle time for the PID, in ms
+#define PRO 2.01 // initial proportional parameter
+#define INT 0.12 // initial integral parameter
+#define DER 5.00 // initial derivative parameter
 
 //#define POM // enable Proportional on Measurement (NOTE: PID PARAMETERS WILL REQUIRE CHANGING). Disable for Proportional on Error.
 
-#define NUM_PROFILES 2 // number of profiles stored in EEPROM
+#define NUM_PROFILES 1 // number of profiles stored in EEPROM
 
 ////////////////////
 // Heater and Fan Limits/Options
@@ -115,7 +115,7 @@
 #define MAX_IO3 100  // Set output % for upper limit for IO3
 
 // cut power to Heater if fan duty is less than HTR_CUTOFF_FAN_VAL (to protect heater in air roaster). Set to 0 for no cutoff
-#define HTR_CUTOFF_FAN_VAL 0
+#define HTR_CUTOFF_FAN_VAL 30
 
 #define FAN_AUTO_COOL 100 // Set fan output duty for auto cool when using PID;STOP command
 
@@ -125,8 +125,8 @@
 
 ////////////////////
 // Temperature Reading Filters
-#define BT_FILTER 10 // filtering level (percent) for BT
-#define ET_FILTER 10 // filtering level (percent) for ET
+#define BT_FILTER 80 // filtering level (percent) for BT
+#define ET_FILTER 80 // filtering level (percent) for ET
 #define AMB_FILTER 70 // 70% filtering on ambient sensor readings
 
 // use RISE_FILTER to adjust the sensitivity of the RoR calculation
@@ -139,7 +139,7 @@
 #define ROR_FILTER 80 // post-filtering for the computed RoR values
 
 // Thermocouple inputs
-#define NC 4 // maximum number of physical channels on the TC4
+#define NC 1 // maximum number of physical channels on the TC4
 
 ////////////////////
 // Calibration Values
