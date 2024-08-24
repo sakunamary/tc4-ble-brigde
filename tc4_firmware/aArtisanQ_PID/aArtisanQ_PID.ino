@@ -6,7 +6,6 @@
 #include "DFRobot_AHT20.h"
 #include <MCP3424.h>
 
-long volt;
 // The user.h file contains user-definable and some other global compiler options
 // It must be located in the same folder as aArtisan.pde
 #include "user.h"
