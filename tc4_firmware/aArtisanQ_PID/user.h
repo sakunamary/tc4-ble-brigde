@@ -37,9 +37,9 @@
 //#define LCD_I2C // if using a $5 delivered Chinese LCD with I2C module
 //#define LCD_PARALLEL // if using a parallel LCD screen
 
-//#define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
+#define LCD_4x20 // if using a 4x20 LCD instead of a 2x16
 
-//#define LCD_I2C_ADDRESS 0x27 // adjust I2C address for LCD if required. Try 0x3F, 0x20, 0x27. Not used for LCDapter.
+#define LCD_I2C_ADDRESS 0x27 // adjust I2C address for LCD if required. Try 0x3F, 0x20, 0x27. Not used for LCDapter.
 
 
 /////////////////////
@@ -101,7 +101,7 @@
 
 //#define POM // enable Proportional on Measurement (NOTE: PID PARAMETERS WILL REQUIRE CHANGING). Disable for Proportional on Error.
 
-#define NUM_PROFILES 1 // number of profiles stored in EEPROM
+#define NUM_PROFILES 2 // number of profiles stored in EEPROM
 
 ////////////////////
 // Heater and Fan Limits/Options
@@ -115,7 +115,7 @@
 #define MAX_IO3 100  // Set output % for upper limit for IO3
 
 // cut power to Heater if fan duty is less than HTR_CUTOFF_FAN_VAL (to protect heater in air roaster). Set to 0 for no cutoff
-#define HTR_CUTOFF_FAN_VAL 30
+#define HTR_CUTOFF_FAN_VAL 0
 
 #define FAN_AUTO_COOL 100 // Set fan output duty for auto cool when using PID;STOP command
 
@@ -139,7 +139,7 @@
 #define ROR_FILTER 80 // post-filtering for the computed RoR values
 
 // Thermocouple inputs
-#define NC 1 // maximum number of physical channels on the TC4
+#define NC 4// maximum number of physical channels on the TC4
 
 ////////////////////
 // Calibration Values
@@ -170,7 +170,7 @@
 //#define MEMORY_CHK
 
 // This turns on the "# xxxxxxx\n" acknowledgements after commands
-//#define ACKS_ON
+#define ACKS_ON
 
 ////////////////////
 // Output Pin Setup

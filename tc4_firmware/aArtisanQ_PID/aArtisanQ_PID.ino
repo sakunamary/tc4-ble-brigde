@@ -1,172 +1,12 @@
-// aArtisanQ_PID.ino
-// ------------
 
-// Written to support the Artisan roasting scope //http://code.google.com/p/artisan/
-
-//   Heater is controlled from OT1 using a zero cross SSR (integral pulse control)
-//   AC fan is controlled from OT2 using a random fire SSR (phase angle control)
-//   zero cross detector (true on logic low) is connected to I/O3
-
-// *** BSD License ***
-// ------------------------------------------------------------------------------------------
-// Copyright (c) 2011, MLG Properties, LLC
-// All rights reserved.
-//
-// Contributor:  Jim Gallt
-//
-// Redistribution and use in source and binary forms, with or without modification, are
-// permitted provided that the following conditions are met:
-//
-//   Redistributions of source code must retain the above copyright notice, this list of
-//   conditions and the following disclaimer.
-//
-//   Redistributions in binary form must reproduce the above copyright notice, this list
-//   of conditions and the following disclaimer in the documentation and/or other materials
-//   provided with the distribution.
-//
-//   Neither the name of the copyright holder(s) nor the names of its contributors may be
-//   used to endorse or promote products derived from this software without specific prior
-//   written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
-// OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
-// THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-// SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-// ------------------------------------------------------------------------------------------
-
-// Revision history:
-// 20110408 Created.
-// 20110409 Reversed the BT and ET values in the output stream.
-//          Shortened the banner display time to avoid timing issues with Artisan
-//          Echo all commands to the LCD
-// 20110413 Added support for Artisan 0.4.1
-// 20110414 Reduced filtering levels on BT, ET
-//          Improved robustness of checkSerial() for stops/starts by Artisan
-//          Revised command format to include newline character for Artisan 0.4.x
-// 20110528 New command language added (major revision)
-//          Use READ command to poll the device for up to 4 temperature channels
-//          Change temperature scale using UNITS command
-//          Map physical channels on ADC to logical channels using the CHAN command
-//          Select SSR output duty cycle with OT1 and OT2 commands
-//          Select PWM logic level output on I/O3 using IO3 command
-//          Directly control digital pins using DPIN command (WARNING -- this might not be smart)
-//          Directly control analog pins using APIN command (WARNING -- this might not be smart)
-// 20110601 Major rewrite to use cmndproc.h library
-//          RF2000 and RC2000 set channel mapping to 1200
-// 20110602 Added ACKS_ON to control verbose output
-// ----------- Version 1.10
-// 20111011 Added support for type J and type T thermocouples
-//          Better error checking on EEPROM reads
-// ----------- aArtsianQ version 0.xx
-// 20111031 Created.
-// ----------- aArtisanQ beta1
-// 20111101 Beta 1 release
-
-
-// ----------- aArtisanQ_PID (Brad Collins)
-// 20120915 Created.
-//          Added PID Library
-//          Added code for analogue inputs
-// 20120916 Added PID command allowing PID control to be activated and deactivated from Artisan
-//          Added roast clock. Can be reset with PID;TIME command
-//          Removed LCD ambient temp display and added roast clock display
-// 20120918 Added code to read profile from EEPROM and interpolate to calculate setpoint. Time/Temp profiles
-//          Added code to end PID control when end of profile is reached
-//          Added additional PID command allowing roast profile to be selected
-//          Added additional PID command allowing PID tunings to be adjusted on the fly (required MAX_TOKENS 5 in cmndproc.h library)
-// 20120920 Added RoR calcs
-// 20120921 Updated RoR calcs to better handle first loop issue (RoR not calculated in first loop)
-//          Stopped ANLG1 being read during PID control
-//          Added code to convert PID Setpoint temps to correct units.  Added temperature units data to profile format
-//          Serial command echo to LCD now optional
-// 20120922 Added support for LCDapter buttons and LEDs (button 1 currently activates or deactivates PID control if enabled)
-//          Added code to allow power to OT1 to be cut if OT2 is below HTR_CUTOFF_FAN_VAL percentage as defined in user.h.  For heater protection if required. Required modification to phase_ctrl.cpp
-//          Added code to allow OT2 to range between custom min and max percentages (defined in user.h)
-// 20121007 Fixed PID tuning command so it handles doubles
-//          Added inital PID tuning parameters in user.h
-// 20121013 Added code to allow Artisan plotting of levelOT1 and levelOT2 if PLOT_POWER is defined in user.h
-//          Swapped location of T1 and T2 on LCD display and renamed to ET and BT
-// 20121014 Enhanced LCD display code and added support for 4x20 LCDs. Define LCD_4x20 in user.h
-// 20121021 Added optional limits for Analogue1
-// 20121120 Added support for pBourbon logging
-// 20121213 Added UP and DOWN parameters for OT1 and OT2 commands.  Increments or decrements power levels by 5%
-// 20130116 Added user adjustable analogue input rounding (DUTY_STEP) in user.h
-// 20130119 aArtisanQ_PID release 3_5
-//          Added code to allow for additional LCD display modes
-// 20130120 Added ability to change roast profile using LCD and buttons
-// 20130121 Tidied up button press code
-// 20130203 Permits use of different TC types on individual channels as in aArtisan 2.10
-//          Updated temperature sample filtering to match aArtisan 2.10
-// 20130406 Added GO and STOP commands to use with Artisan 'Charge' and 'End' buttons
-// 20140127 aArtisanQ_PID release 4_0 created
-//          Added support for Roastlogger roasting software (responds to LOAD, POWER and FAN commands. Sends rorT1=, T1=, rorT2=, T2= and power levels to roastlogger)
-// 20140128 Improved handling of heater and fan power limits
-// 20140213 aArtisanQ_PID release 4_2
-// 20140214 Added option in user.h to define software mode (Artisan, Roastlogger or pBourbon)
-//          Fixed? bug causing crashes when receiving READ commands
-// 20140214 aArtisanQ_PID release 4_3
-// 20150328 Replaced pBourbon option with Android option
-//          Bug fix in LCD menu code.  Menu code disabled when not roasting stand alone
-//          Changed default PID channel to 0
-//          Added SV to values sent to Android app
-// 20150328 aArtisanQ_PID release 5_0
-// 20150403 Added PID;SV command from aArtisan
-//          Changed default PID roast profile to 0 when using logging software
-//          Reduced SRAM usage
-// 20150404 Added PID;CHAN PID;CT and FILT commands
-//          Added Heater, Fan and SV values to Artisan Logger if PID active
-//          Removed PLOT_POWER option. Send power levels and SV if PID is active for Artisan. Send all by default for Android
-// 20150409 Made loop time variable. Default = 1000ms (1s) but changes to 2000ms (2s) if needed for reading 4 temperature channels
-//          Adjusted Read command to match aArtisan. Runs logger() from command to provide immediate response to Artisan
-// 20150426 Removed io3, rf2000 and rc2000 commands to save memory
-//          Other small compile changes to save memory
-//          Compile directive change to ensure output levels are displayed when analogue pots are not active
-// 20160416 Added fast PWM (3.922kHz) available in Phase Angle Control Mode on IO3. Enable using IO3_HTR_PAC in user.h.
-//          Moved default zero-cross interrupt to IO2 to allow PWM out on IO3.
-//          Also does 3.922kHz PWM for DC fan on IO3 in PWM mode.
-//          Added Min and Max for IO3 output
-//          aArtisanQ_PID version 6_2 released for testing
-// 20161214 Added some compile directives to disable the pwmio3 variable when IO3_HTR_PAC is not defined (JGG)
-//          This was causing the pullup on IO3 to be disabled and intefered with use of IO3 as the ZCD input
-// 20161216 Changes to user.h (and others) to implement pre-defined configurations
-// 20171004 Changed definition of PID_CHAN from logical channel to physical channel
-//          This was causing issues with Artisan Roasting Scope logic when doing background follow with TC4 PID and logical channels set using CHAN;2100
-//          Artisan Roasting Scope is assuming X in PID;CHAN;X command is a physical channel
-//          Adjusted ROR_CHAN code to match physical channel approach
-//          Adjusted command.txt to suit above changes
-//          Adjusted Logger() so Heater Duty and Fan Duty are always sent in serial stream regardless od PID state
-// 20180214 Added support for cheap I2C LCDs
-//          Added support for two directly connected buttons for reseting timer and toggle PID.
-// 20180529 Added support for another 2 buttons for menu navigation
-//          Modified compile directives to allow IO3 PWM control and DCFAN command in CONFIG_PAC2 mode
-//          Minor bug fix in logger()
-// 20180831 Added support for PID_V1.2 library with Proportional on Measurement mode option
-//          Added flag in user.h to set default PID mode
-//          Modified PID tuning serial command. Now accepts PID;T_POM;p;i;d to set P_ON_M mode. PID;T;p;i;d now switches to P_ON_E mode.
-//          Added new PID;LIMIT;min;max serial command to allow the PID output limits to be set.
-//          Cleaned code to remove compile warnings
-// 20180913 Version 6_6 released
-// 20181130 Added compile directives to allow CONFIG_PAC3 mode to compile
-//          Minor changes to user.h defaults
-//          Version 6_7 released
-// 20210108 Added new CONFIG_PAC2_IO3FAN mode wich uses ICC heater control on OT1 and PWM fan control on IO3
-// 20211215 Bug fix in PID;P;x command
-//          Bug fix for MAX_OT2 limit check in OT2 command
-//          Reassigned RS pin for parallel LCD connection from pin 2 to pin 5 to eliminate conflict between LCD and IO2
-// 20220225 Changed PID profile selection command format from PID,Px to PID,P,x
-//          Bug fixes in PID,SV and PID,P,x commands
-// 20230328 Bug fix in IO3;xxx command. MIN_IO3 and MAX_IO3 checks added.
-
-#define BANNER_ARTISAN "aArtisanQ_PID 6_8"
+#define BANNER_ARTISAN "aArtisanQ_PID 7_0"
 
 // this library included with the arduino distribution
 #include <Wire.h>
+#include "DFRobot_AHT20.h"
+#include <MCP3424.h>
 
+long volt;
 // The user.h file contains user-definable and some other global compiler options
 // It must be located in the same folder as aArtisan.pde
 #include "user.h"
@@ -189,7 +29,7 @@
 // these "contributed" libraries must be installed in your sketchbook's arduino/libraries folder
 #include <cmndproc.h>      // for command interpreter
 #include <thermocouple.h>  // type K, type J, and type T thermocouple support
-#include <cADC.h>          // MCP3424
+//#include <cADC.h> // MCP3424
 
 #if defined LCD_PARALLEL || defined LCDAPTER
 #include <cLCD.h>  // required only if LCD is used
@@ -199,7 +39,7 @@
 #endif
 
 // ------------------------ other compile directives
-#define MIN_DELAY 300  // ms between ADC samples (tested OK at 270)
+#define MIN_DELAY 500  // ms between ADC samples (tested OK at 270)
 #define DP 1           // decimal places for output on serial port
 #define D_MULT 0.001   // multiplier to convert temperatures from int to float
 #define DELIM "; ,="   // command line parameter delimiters
@@ -247,8 +87,6 @@ boolean analogue2_changed;
 #ifdef PID_CONTROL
 #include <PID_v1.h>
 
-#include "DFRobot_AHT20.h"
-
 //Define PID Variables we'll be connecting to
 double Setpoint, Input, Output, SV;  // SV is for roasting software override of Setpoint
 
@@ -278,9 +116,12 @@ boolean first;
 uint16_t looptime = 1000;
 
 // class objects
-cADC adc(A_ADC);  // MCP3424
 DFRobot_AHT20 aht20;
-//ambSensor amb( A_AMB ); // MCP9800
+MCP3424 adc(0X68);  // Declaration of MCP3424
+// cADC adc( A_ADC ); // MCP3424
+// ambSensor amb( A_AMB ); // MCP9800
+
+
 filterRC fT[NC];     // filter for logged ET, BT
 filterRC fRise[NC];  // heavily filtered for calculating RoR
 filterRC fRoR[NC];   // post-filtering on RoR values
@@ -522,25 +363,20 @@ void logger() {
 // --------------------------------------------------------------------------
 void get_samples()  // this function talks to the amb sensor and ADC via I2C
 {
-  int32_t v;
+  // int32_t v;
+  long v;
   tcBase* tc;
   float tempF;
   int32_t itemp;
   float rx;
 
-  //uint16_t dly = amb.getConvTime();  // use delay based on slowest conversion
-  uint16_t dADC = adc.getConvTime();
-  uint16_t dly = dADC;
-  //uint16_t dly = dly > dADC ? dly : dADC;
-
   for (uint8_t jj = 0; jj < NC; jj++) {  // one-shot conversions on both chips
     uint8_t k = actv[jj];                // map logical channels to physical ADC channels
     if (k > 0) {
       --k;
-      tc = tcp[k];            // each channel may have its own TC type
-      adc.nextConversion(k);  // start ADC conversion on physical channel k
-      //amb.nextConversion();   // start ambient sensor conversion
-      checkStatus(dly);  // give the chips time to perform the conversions
+      tc = tcp[k];  // each channel may have its own TC type
+
+      adc.Configuration(k, 16, 1, 1);
 
       if (!first) {                 // on first loop dont save zero values
         ftemps_old[k] = ftemps[k];  // save old filtered temps for RoR calcs
@@ -549,16 +385,21 @@ void get_samples()  // this function talks to the amb sensor and ADC via I2C
 
       ftimes[k] = millis();  // record timestamp for RoR calculations
 
-      //amb.readSensor();                              // retrieve value from ambient temp register
-      v = adc.readuV();                              // retrieve microvolt sample from MCP3424
-      tempF = tc->Temp_F(0.001 * v, aht20.getTemperature_F());  
-      //tempF = tc->Temp_F(0.001 * v, amb.getAmbF());  // convert uV to Celsius
+      v = adc.Measure();
+      delay(50);
+      AT = aht20.getTemperature_F();
+      tempF = tc->Temp_F(0.001 * v, AT);  // convert uV to Celsius
 
       // filter on direct ADC readings, not computed temperatures
       v = fT[k].doFilter(v << 10);  // multiply by 1024 to create some resolution for filter
       v >>= 10;
-      AT = aht20.getTemperature_F();
-      //AT = amb.getAmbF();
+
+      // Serial.print("channel:");
+      // Serial.print(k);
+      // Serial.println();
+      // Serial.print("TempF:");
+      // Serial.print(AT);
+      // Serial.println();
       T[k] = tc->Temp_F(0.001 * v, AT);  // convert uV to Fahrenheit;
 
       ftemps[k] = fRise[k].doFilter(tempF * 1000);  // heavier filtering for RoR
@@ -566,6 +407,10 @@ void get_samples()  // this function talks to the amb sensor and ADC via I2C
       if (!first) {  // on first loop dont calc RoR
         rx = calcRise(ftemps_old[k], ftemps[k], ftimes_old[k], ftimes[k]);
         RoR[k] = fRoR[k].doFilter(rx / D_MULT) * D_MULT;  // perform post-filtering on RoR values
+
+        // Serial.print("channel:");Serial.print(k);Serial.println();
+        // Serial.print("volt:");Serial.print(v);Serial.println();
+        // Serial.print("tempF:");Serial.print(k);Serial.println();
       }
     }
   }
@@ -1329,8 +1174,13 @@ void setup() {
   delay(100);
   Wire.begin();
   Serial.begin(BAUD);
-  //amb.init(AMB_FILTER);  // initialize ambient temp filtering
+  Serial.println("setup start");
   aht20.begin();
+  aht20.startMeasurementReady(/* crcEn = */ true);
+  adc.NewConversion();
+  adc.Configuration(1, 16, 1, 1);
+  // amb.init(AMB_FILTER);  // initialize ambient temp filtering
+
 #if defined LCD_PARALLEL || defined LCDAPTER || defined LCD_I2C
 #ifdef LCD_4x20
   lcd.begin(20, 4);
@@ -1364,16 +1214,16 @@ void setup() {
   Serial.println(freeMemory());
 #endif
 
-  adc.setCal(CAL_GAIN, UV_OFFSET);
-  //amb.setOffset(AMB_OFFSET);
+  // adc.setCal(CAL_GAIN, UV_OFFSET);
+  // amb.setOffset(AMB_OFFSET);
 
   // read calibration and identification data from eeprom
   if (readCalBlock(eeprom, caldata)) {
-    adc.setCal(caldata.cal_gain, caldata.cal_offset);
-    //amb.setOffset(caldata.K_offset);
+    // adc.setCal(caldata.cal_gain, caldata.cal_offset);
+    // amb.setOffset(caldata.K_offset);
   } else {  // if there was a problem with EEPROM read, then use default values
-    adc.setCal(CAL_GAIN, UV_OFFSET);
-    //amb.setOffset(AMB_OFFSET);
+    // adc.setCal(CAL_GAIN, UV_OFFSET);
+    // amb.setOffset(AMB_OFFSET);
   }
 
   // initialize filters on all channels
@@ -1498,6 +1348,7 @@ void setup() {
   first = true;
   counter = 3;                           // start counter at 3 to match with Artisan. Probably a better way to sync with Artisan???
   next_loop_time = millis() + looptime;  // needed??
+  Serial.println("setup end");
 }
 
 
@@ -1520,9 +1371,10 @@ void loop() {
 #endif
 
   // Has a command been received?
-  checkSerial();
 
+  checkSerial();
   // Read temperatures
+
   get_samples();
 
 // Read analogue POT values if defined
@@ -1572,7 +1424,6 @@ void loop() {
 #if defined LCD_PARALLEL || defined LCDAPTER || defined LCD_I2C
   updateLCD();
 #endif
-
 // Send data to Roastlogger if defined
 #if defined ROASTLOGGER
   logger();  // send data every second to Roastlogger every loop (looptime)
