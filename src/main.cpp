@@ -11,12 +11,12 @@
 
 #include <Arduino.h>
 #include "config.h"
-#include <BleSerial.h>
+// #include <BleSerial.h>
 #include <esp_attr.h>
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
 #include "soc/rtc_wdt.h"
-#include <HardwareSerial.h>
+// #include <HardwareSerial.h>
 #include <StringTokenizer.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -28,6 +28,11 @@
 #include <Adafruit_SSD1306.h>
 #include <U8g2_for_Adafruit_GFX.h>
 
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
@@ -35,10 +40,12 @@
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
+BLEServer *pServer = NULL;
+BLECharacteristic *pTxCharacteristic;
 
-BleSerial SerialBT;
+// BleSerial SerialBT;
 String local_IP;
-HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
+// HardwareSerial Serial_in(1); // D16 RX_drumer  D17 TX_drumer
 WebServer server(80);
 StopWatch sw_secs(StopWatch::SECONDS);
 
@@ -46,11 +53,8 @@ uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
 String CMD_Data[6];
 byte tries;
-
-SemaphoreHandle_t xserialReadBufferMutex = NULL; // Mutex for TC4数据输出时写入队列的数据
-QueueHandle_t queueCMD_BLE = xQueueCreate(8, sizeof(uint8_t[BUFFER_SIZE]));
-static TaskHandle_t xTASK_BLE_CMD_handle = NULL;
-static TaskHandle_t xTask_TIMER = NULL;
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
 
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
@@ -144,6 +148,83 @@ String processor(const String &var)
 
     return String();
 }
+
+class MyServerCallbacks : public BLEServerCallbacks
+{
+    void onConnect(BLEServer *pServer)
+    {
+        deviceConnected = true;
+    };
+
+    void onDisconnect(BLEServer *pServer)
+    {
+        deviceConnected = false;
+    }
+};
+
+class MyCallbacks : public BLECharacteristicCallbacks
+{
+    void onWrite(BLECharacteristic *pCharacteristic)
+    {
+        std::string rxValue = pCharacteristic->getValue();
+        uint8_t BLE_DATA_Buffer[BUFFER_SIZE];
+        int i = 0;
+        while (i < rxValue.length() && rxValue.length() > 0)
+        {
+            Serial.print(rxValue[i]);
+            if (rxValue[i] == 0x0A)
+            {
+                BLE_DATA_Buffer[i] = rxValue[i];                  // copy value
+                xQueueSend(queueCMD_BLE, &BLE_DATA_Buffer, 300/ portTICK_PERIOD_MS);  // 串口数据发送至队列
+                xTaskNotify(xTASK_BLE_CMD_handle, 0, eIncrement); // 通知处理任务干活
+                memset(&BLE_DATA_Buffer, '\0', BUFFER_SIZE);
+                i = 0; // clearing
+                break; // 跳出循环
+            }
+            else
+            {
+                BLE_DATA_Buffer[i] = rxValue[i];
+                i++;
+            }
+        }
+        delay(50);
+    }
+};
+
+// void TASK_DATA_to_BLE(void *pvParameters)
+// {
+//     (void)pvParameters;
+//     uint8_t BLE_DATA_Buffer[BUFFER_SIZE];
+//     const TickType_t timeOut = 150;
+//     uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
+//     BaseType_t xResult;
+
+//     while (1)
+//     {
+//         xResult = xTaskNotifyWait(0x00,                 // 在运行前这个命令之前，先清除这几位
+//                                   0x00,                 // 运行后，重置所有的bits 0x00 or ULONG_MAX or 0xFFFFFFFF
+//                                   &ulNotificationValue, // 重置前的notification value
+//                                   portMAX_DELAY);       // 一直等待
+//         if (xResult == pdTRUE)
+//         {
+//             if (xQueueReceive(queue_data_to_BLE, &BLE_DATA_Buffer, timeOut) == pdPASS)
+
+//             { // 从接收QueueCMD 接收指令
+// #if defined(DEBUG_MODE)
+//                 Serial.println(String((char *)BLE_DATA_Buffer));
+// #endif
+//                 if (deviceConnected)
+//                 {
+//                     pTxCharacteristic->setValue(BLE_DATA_Buffer, sizeof(BLE_DATA_Buffer));
+//                     pTxCharacteristic->notify();
+//                 }
+//                 // data frame:PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
+//                 delay(50);
+//             }
+//         }
+//     }
+// }
+
 void startBluetooth()
 {
     byte tries = 0;
@@ -152,8 +233,28 @@ void startBluetooth()
     sprintf(deviceName, "MATCHBOX_%02X%02X%02X", unitMACAddress[3], unitMACAddress[4], unitMACAddress[5]);
 
     // Init BLE Serial
-    SerialBT.begin(deviceName);
-    SerialBT.setTimeout(10);
+    // Create the BLE Device
+    BLEDevice::init(deviceName);
+    // Create the BLE Server
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+    // Create the BLE Service
+    BLEService *pService = pServer->createService(SERVICE_UUID);
+    // Create a BLE Characteristic
+    pTxCharacteristic = pService->createCharacteristic(
+        CHARACTERISTIC_UUID_TX,
+        BLECharacteristic::PROPERTY_NOTIFY);
+    pTxCharacteristic->addDescriptor(new BLE2902());
+
+    BLECharacteristic *pRxCharacteristic = pService->createCharacteristic(
+        CHARACTERISTIC_UUID_RX,
+        BLECharacteristic::PROPERTY_WRITE);
+    pRxCharacteristic->setCallbacks(new MyCallbacks());
+    // Start the service
+    pService->start();
+    // Start advertising
+    pServer->getAdvertising()->start();
+
     // Serial.println("BTSerial is OK");
     WiFi.mode(WIFI_AP);
     WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
@@ -174,27 +275,6 @@ void startBluetooth()
 #endif
 }
 
-void ReadBtTask(void *e)
-{
-    (void)e;
-    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
-    while (true)
-    {
-        if (SerialBT.available())
-        {
-            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
-            {
-                auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
-                Serial_in.write(bleReadBuffer, count);
-                // Serial.write(bleReadBuffer, count);
-                xQueueSend(queueCMD_BLE, &bleReadBuffer, xIntervel); // 串口数据发送至队列
-                xTaskNotify(xTASK_BLE_CMD_handle, 0, eIncrement);
-                xSemaphoreGive(xserialReadBufferMutex);
-            }
-            delay(50);
-        }
-    }
-}
 
 // Task for reading Serial Port
 void ReadSerialTask(void *e)
@@ -207,11 +287,11 @@ void ReadSerialTask(void *e)
     int j = 0;
     while (true)
     {
-        if (Serial_in.available())
+        if (Serial.available())
         {
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
-                auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+                auto count = Serial.readBytes(serialReadBuffer, BUFFER_SIZE);
                 cmd_check = String((char *)serialReadBuffer);
                 Serial.println(cmd_check);
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
@@ -230,8 +310,15 @@ void ReadSerialTask(void *e)
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    // Serial.printf(BLE_Send_out);
-                    SerialBT.printf(BLE_Send_out);
+                    Serial.printf(BLE_Send_out);
+                    if (deviceConnected)
+                    {
+                        pTxCharacteristic->setValue(serialReadBuffer_clean_OUT, sizeof(serialReadBuffer_clean_OUT));
+                        pTxCharacteristic->notify();
+                    }
+                    // xQueueSend(queueCMD_BLE, &BLE_DATA_Buffer, 100);  // 串口数据发送至队列
+                    //  xTaskNotify(xTASK_BLE_CMD_handle, 0, eIncrement); // 通知处理任务干活
+                    // SerialBT.printf(BLE_Send_out);
                 }
                 xSemaphoreGive(xserialReadBufferMutex);
             }
@@ -255,7 +342,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
         {
-            Serial_in.printf("READ\n");
+            Serial.printf("READ\n");
             xSemaphoreGive(xserialReadBufferMutex);
         }
     }
@@ -290,9 +377,9 @@ void TASK_TIMER(void *pvParameters)
 void TASK_BLE_CMD_handle(void *pvParameters)
 {
     (void)pvParameters;
-    uint8_t BLE_CMD_Buffer[BLE_BUFFER_SIZE];
-    char BLE_data_buffer_char[BLE_BUFFER_SIZE];
-    uint8_t BLE_data_buffer_uint8[BLE_BUFFER_SIZE];
+    uint8_t BLE_CMD_Buffer[BUFFER_SIZE];
+    char BLE_data_buffer_char[BUFFER_SIZE];
+    uint8_t BLE_data_buffer_uint8[BUFFER_SIZE];
     const TickType_t timeOut = 150;
     uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
     BaseType_t xResult;
@@ -338,7 +425,7 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     CMD_String.trim();
                     CMD_String.toUpperCase();
 #if defined(DEBUG_MODE)
-                     Serial.println(CMD_String); // for debug
+                    Serial.println(CMD_String); // for debug
 #endif
                     // cmd from BLE cleaning
                     StringTokenizer BLE_CMD(CMD_String, ",");
@@ -386,11 +473,7 @@ void setup()
 
     // Disable watchdog timers
     disableCore0WDT();
-    disableCore1WDT();
     disableLoopWDT();
-    esp_task_wdt_delete(NULL);
-    rtc_wdt_protect_off();
-    rtc_wdt_disable();
     xserialReadBufferMutex = xSemaphoreCreateMutex();
 
     sw_secs.start();
@@ -403,27 +486,27 @@ void setup()
     display.display();
 
     // Start Serial
-    Serial_in.setRxBufferSize(BUFFER_SIZE);
+    // Serial.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
-    Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
+    // Serial.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
     // Start BLE
     startBluetooth();
 
     // Start tasks
-    // Serial.printf("Start ReadSerialTask\n");
+    Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(ReadSerialTask, "ReadSerialTask", 1024 * 4, NULL, 1, NULL); // read serial(TC4) data ,and send to BLE
 
-    // Serial.printf("Start ReadBtTask\n");
-    xTaskCreate(ReadBtTask, "ReadBtTask", 1024 * 4, NULL, 1, NULL); // read BLE cmnd
+    // // Serial.printf("Start ReadBtTask\n");
+    // xTaskCreate(ReadBtTask, "ReadBtTask", 1024 * 4, NULL, 1, NULL); // read BLE cmnd
 
-    // Serial.printf("Start Send_READ_Task\n");
+    Serial.printf("Start Send_READ_Task\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 1024 * 2, NULL, 1, NULL); // keep sending READ cmnd to TC4 every 1500ms
 
-    // Serial.printf("Start TASK_BLE_CMD_handle\n");
+    Serial.printf("Start TASK_BLE_CMD_handle\n");
     xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 1, &xTASK_BLE_CMD_handle); // once get cmnd form BLE service then do something
 
-    // Serial.printf("Start TASK_TIMER\n");
+    Serial.printf("Start TASK_TIMER\n");
     xTaskCreate(TASK_TIMER, "TASK_TIMER", 1024 * 4, NULL, 1, &xTask_TIMER); // stopwatch task
     vTaskSuspend(xTask_TIMER);
 
@@ -441,5 +524,22 @@ void loop()
 {
     server.handleClient();
     ElegantOTA.loop();
+
+    // disconnecting
+    if (!deviceConnected && oldDeviceConnected)
+    {
+        delay(500);                  // give the bluetooth stack the chance to get things ready
+        pServer->startAdvertising(); // restart advertising
+#if defined(DEBUG_MODE)
+        Serial.println("start advertising");
+#endif
+        oldDeviceConnected = deviceConnected;
+    }
+    // connecting
+    if (deviceConnected && !oldDeviceConnected)
+    {
+        // do stuff here on connecting
+        oldDeviceConnected = deviceConnected;
+    }
 }
 //
