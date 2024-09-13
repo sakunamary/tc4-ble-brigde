@@ -22,24 +22,24 @@
 #include <WiFiClient.h>
 #include <WebServer.h>
 #include <ElegantOTA.h>
-#include <StopWatch.h>
+// #include <StopWatch.h>
 
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include <U8g2_for_Adafruit_GFX.h>
+// #include <Adafruit_GFX.h>
+// #include <Adafruit_SSD1306.h>
+// #include <U8g2_for_Adafruit_GFX.h>
 
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-#define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+// #define SCREEN_WIDTH 128 // OLED display width, in pixels
+// #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 
-#define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
-#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
-U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
+// #define OLED_RESET -1       // Reset pin # (or -1 if sharing Arduino reset pin)
+// #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+// Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+// U8G2_FOR_ADAFRUIT_GFX u8g2_for_adafruit_gfx;
 BLEServer *pServer = NULL;
 BLECharacteristic *pTxCharacteristic;
 
@@ -47,7 +47,7 @@ BLECharacteristic *pTxCharacteristic;
 String local_IP;
 // HardwareSerial Serial_in(1); // D16 RX_drumer  D17 TX_drumer
 WebServer server(80);
-StopWatch sw_secs(StopWatch::SECONDS);
+// StopWatch sw_secs(StopWatch::SECONDS);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
@@ -59,28 +59,28 @@ bool oldDeviceConnected = false;
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
-unsigned long stopwatch_millis = 0;
+// unsigned long stopwatch_millis = 0;
 
 void onOTAStart()
 {
     // Log when OTA has started
     // Serial.println("OTA update started!");
-    display.clearDisplay();
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-    u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-    u8g2_for_adafruit_gfx.drawStr(34, 28, "UPDATE");
-    display.display();
+    // display.clearDisplay();
+    // u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+    // u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+    // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    // u8g2_for_adafruit_gfx.drawStr(34, 28, "UPDATE");
+    // display.display();
 }
 
 void onOTAProgress(size_t current, size_t final)
 {
-    display.clearDisplay();
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t);
-    u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-    u8g2_for_adafruit_gfx.drawStr(55, 28, "OTA");
-    display.display();
+    // display.clearDisplay();
+    // u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t);
+    // u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+    // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    // u8g2_for_adafruit_gfx.drawStr(55, 28, "OTA");
+    // display.display();
 }
 
 void onOTAEnd(bool success)
@@ -88,21 +88,21 @@ void onOTAEnd(bool success)
     // Log when OTA has finished
     if (success)
     {
-        display.clearDisplay();
-        u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-        u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
-        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-        u8g2_for_adafruit_gfx.drawStr(50, 28, "DONE");
-        display.display();
+        // display.clearDisplay();
+        // u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+        // u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+        // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+        // u8g2_for_adafruit_gfx.drawStr(50, 28, "DONE");
+        // display.display();
     }
     else
     {
-        display.clearDisplay();
-        u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-        u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
-        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-        u8g2_for_adafruit_gfx.drawStr(42, 28, "ERROR");
-        display.display();
+        // display.clearDisplay();
+        // u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_embedded_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+        // u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x0048);
+        // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+        // u8g2_for_adafruit_gfx.drawStr(42, 28, "ERROR");
+        // display.display();
     }
     // <Add your own code here>
 }
@@ -257,7 +257,7 @@ void startBluetooth()
 
     // Serial.println("BTSerial is OK");
     WiFi.mode(WIFI_AP);
-    WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
+    WiFi.softAP(deviceName, "matchbox8888"); // defualt IP address :192.168.4.1 password min 8 digis
 
 // show AP's IP
 #ifdef DEBUG_MODE
@@ -349,30 +349,30 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 }
 
 //
-void TASK_TIMER(void *pvParameters)
-{
-    (void)pvParameters;
-    uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
-    BaseType_t xResult;
-    TickType_t xLastWakeTime;
-    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
-    xLastWakeTime = xTaskGetTickCount();
-    char time[5];
-    while (1)
-    {
-        vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        display.clearDisplay();
-        u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_all_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-        u8g2_for_adafruit_gfx.setFontMode(1);                          // use u8g2 transparent mode (this is default)
-        u8g2_for_adafruit_gfx.setFontDirection(0);                     // left to right (this is default)
-        u8g2_for_adafruit_gfx.setForegroundColor(WHITE);               // apply Adafruit GFX color
-        u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x007b);
-        u8g2_for_adafruit_gfx.setFont(u8g2_font_maniac_tn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
-        sprintf(time, "%02d:%02d", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
-        u8g2_for_adafruit_gfx.drawStr(42, 27, time);
-        display.display();
-    }
-}
+// void TASK_TIMER(void *pvParameters)
+// {
+//     (void)pvParameters;
+//     uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
+//     BaseType_t xResult;
+//     TickType_t xLastWakeTime;
+//     const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
+//     xLastWakeTime = xTaskGetTickCount();
+//     char time[5];
+//     while (1)
+//     {
+//         vTaskDelayUntil(&xLastWakeTime, xIntervel);
+//         display.clearDisplay();
+//         u8g2_for_adafruit_gfx.setFont(u8g2_font_open_iconic_all_4x_t); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+//         u8g2_for_adafruit_gfx.setFontMode(1);                          // use u8g2 transparent mode (this is default)
+//         u8g2_for_adafruit_gfx.setFontDirection(0);                     // left to right (this is default)
+//         u8g2_for_adafruit_gfx.setForegroundColor(WHITE);               // apply Adafruit GFX color
+//         u8g2_for_adafruit_gfx.drawGlyph(0, 32, 0x007b);
+//         u8g2_for_adafruit_gfx.setFont(u8g2_font_maniac_tn); // select u8g2 font from here: https://github.com/olikraus/u8g2/wiki/fntlistall
+//         sprintf(time, "%02d:%02d", sw_secs.elapsed() / 60, sw_secs.elapsed() % 60);
+//         u8g2_for_adafruit_gfx.drawStr(42, 27, time);
+//         display.display();
+//     }
+// }
 
 void TASK_BLE_CMD_handle(void *pvParameters)
 {
@@ -445,20 +445,20 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                 {
                     if (CMD_Data[1] == "ON")
                     {
-                        sw_secs.reset();
-                        sw_secs.start();
-                        vTaskResume(xTask_TIMER);
+                        // sw_secs.reset();
+                        // sw_secs.start();
+                        // vTaskResume(xTask_TIMER);
                         Serial.printf("PID is ON\n"); // for debug
                     }
                     else if (CMD_Data[1] == "OFF")
                     {
                         Serial.printf("PID is OFF\n"); // for debug
-                        sw_secs.stop();
-                        vTaskSuspend(xTask_TIMER);
-                        display.clearDisplay();
-                        u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-                        u8g2_for_adafruit_gfx.drawStr(4, 28, "MATCHBOX");
-                        display.display();
+                        // sw_secs.stop();
+                        // vTaskSuspend(xTask_TIMER);
+                        // display.clearDisplay();
+                        // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+                        // u8g2_for_adafruit_gfx.drawStr(4, 28, "MATCHBOX");
+                        // display.display();
                     }
                 }
                 // END of  big handle case switch
@@ -476,14 +476,14 @@ void setup()
     disableLoopWDT();
     xserialReadBufferMutex = xSemaphoreCreateMutex();
 
-    sw_secs.start();
-    display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
-    u8g2_for_adafruit_gfx.begin(display); // connect u8g2 procedures to Adafruit GFX
+    // sw_secs.start();
+    // display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
+    // u8g2_for_adafruit_gfx.begin(display); // connect u8g2 procedures to Adafruit GFX
 
-    display.clearDisplay();
-    u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
-    u8g2_for_adafruit_gfx.drawStr(2, 28, "MATCHBOX");
-    display.display();
+    // display.clearDisplay();
+    // u8g2_for_adafruit_gfx.setFont(u8g2_font_logisoso24_tr);
+    // u8g2_for_adafruit_gfx.drawStr(2, 28, "MATCHBOX");
+    // display.display();
 
     // Start Serial
     // Serial.setRxBufferSize(BUFFER_SIZE);
@@ -506,9 +506,9 @@ void setup()
     Serial.printf("Start TASK_BLE_CMD_handle\n");
     xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 1, &xTASK_BLE_CMD_handle); // once get cmnd form BLE service then do something
 
-    Serial.printf("Start TASK_TIMER\n");
-    xTaskCreate(TASK_TIMER, "TASK_TIMER", 1024 * 4, NULL, 1, &xTask_TIMER); // stopwatch task
-    vTaskSuspend(xTask_TIMER);
+    // Serial.printf("Start TASK_TIMER\n");
+    // xTaskCreate(TASK_TIMER, "TASK_TIMER", 1024 * 4, NULL, 1, &xTask_TIMER); // stopwatch task
+    // vTaskSuspend(xTask_TIMER);
 
     server.on("/", handle_root);
     ElegantOTA.begin(&server); // Start ElegantOTA

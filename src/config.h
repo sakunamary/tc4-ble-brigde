@@ -7,7 +7,7 @@
 
 #define VERSION "1.0.0"
 
-#define DEBUG_MODE
+//#define DEBUG_MODE
 // #define TX D10
 // #define RX D8
 
