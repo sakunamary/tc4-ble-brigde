@@ -16,7 +16,7 @@
 #include <esp_task_wdt.h>
 #include <driver/rtc_io.h>
 #include "soc/rtc_wdt.h"
-// #include <HardwareSerial.h>
+#include <HardwareSerial.h>
 #include <StringTokenizer.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -45,7 +45,7 @@ BLECharacteristic *pTxCharacteristic;
 
 // BleSerial SerialBT;
 String local_IP;
-// HardwareSerial Serial_in(1); // D16 RX_drumer  D17 TX_drumer
+HardwareSerial Serial_in(1); // D16 RX_drumer  D17 TX_drumer
 WebServer server(80);
 // StopWatch sw_secs(StopWatch::SECONDS);
 
@@ -171,7 +171,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
         int i = 0;
         while (i < rxValue.length() && rxValue.length() > 0)
         {
-            Serial.print(rxValue[i]);
+            //Serial_in.print(rxValue[i]);
             if (rxValue[i] == 0x0A)
             {
                 BLE_DATA_Buffer[i] = rxValue[i];                  // copy value
@@ -261,15 +261,15 @@ void startBluetooth()
 
 // show AP's IP
 #ifdef DEBUG_MODE
-    Serial.printf("IP:");
+    Serial_in.printf("IP:");
     if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
     {
-        Serial.println(IpAddressToString(WiFi.softAPIP()));
+        Serial_in.println(IpAddressToString(WiFi.softAPIP()));
         local_IP = IpAddressToString(WiFi.softAPIP());
     }
     else
     {
-        Serial.println(IpAddressToString(WiFi.localIP()));
+        Serial_in.println(IpAddressToString(WiFi.localIP()));
         local_IP = IpAddressToString(WiFi.localIP());
     }
 #endif
@@ -287,13 +287,13 @@ void ReadSerialTask(void *e)
     int j = 0;
     while (true)
     {
-        if (Serial.available())
+        if (Serial_in.available())
         {
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
-                auto count = Serial.readBytes(serialReadBuffer, BUFFER_SIZE);
-                cmd_check = String((char *)serialReadBuffer);
-                Serial.println(cmd_check);
+                auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+                //cmd_check = String((char *)serialReadBuffer);
+               // Serial_in.println(cmd_check);
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
                 {
                     while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
@@ -310,7 +310,7 @@ void ReadSerialTask(void *e)
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    Serial.printf(BLE_Send_out);
+                    //Serial_in.printf(BLE_Send_out);
                     if (deviceConnected)
                     {
                         pTxCharacteristic->setValue(serialReadBuffer_clean_OUT, sizeof(serialReadBuffer_clean_OUT));
@@ -342,7 +342,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
         {
-            Serial.printf("READ\n");
+            Serial_in.printf("READ\n");
             xSemaphoreGive(xserialReadBufferMutex);
         }
     }
@@ -425,7 +425,7 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                     CMD_String.trim();
                     CMD_String.toUpperCase();
 #if defined(DEBUG_MODE)
-                    Serial.println(CMD_String); // for debug
+                    Serial_in.println(CMD_String); // for debug
 #endif
                     // cmd from BLE cleaning
                     StringTokenizer BLE_CMD(CMD_String, ",");
@@ -448,11 +448,11 @@ void TASK_BLE_CMD_handle(void *pvParameters)
                         // sw_secs.reset();
                         // sw_secs.start();
                         // vTaskResume(xTask_TIMER);
-                        Serial.printf("PID is ON\n"); // for debug
+                        //Serial_in.printf("PID is ON\n"); // for debug
                     }
                     else if (CMD_Data[1] == "OFF")
                     {
-                        Serial.printf("PID is OFF\n"); // for debug
+                        //Serial_in.printf("PID is OFF\n"); // for debug
                         // sw_secs.stop();
                         // vTaskSuspend(xTask_TIMER);
                         // display.clearDisplay();
@@ -472,8 +472,8 @@ void setup()
 {
 
     // Disable watchdog timers
-    disableCore0WDT();
-    disableLoopWDT();
+    // disableCore0WDT();
+    // disableLoopWDT();
     xserialReadBufferMutex = xSemaphoreCreateMutex();
 
     // sw_secs.start();
@@ -487,26 +487,26 @@ void setup()
 
     // Start Serial
     // Serial.setRxBufferSize(BUFFER_SIZE);
-    Serial.begin(BAUDRATE);
-    // Serial.begin(BAUDRATE, SERIAL_8N1, RX, TX);
+    //Serial.begin(BAUDRATE);
+     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
 
     // Start BLE
     startBluetooth();
 
     // Start tasks
-    Serial.printf("Start ReadSerialTask\n");
+    Serial_in.printf("Start ReadSerialTask\n");
     xTaskCreate(ReadSerialTask, "ReadSerialTask", 1024 * 4, NULL, 1, NULL); // read serial(TC4) data ,and send to BLE
 
-    // // Serial.printf("Start ReadBtTask\n");
+    // // Serial_in.printf("Start ReadBtTask\n");
     // xTaskCreate(ReadBtTask, "ReadBtTask", 1024 * 4, NULL, 1, NULL); // read BLE cmnd
 
-    Serial.printf("Start Send_READ_Task\n");
+    Serial_in.printf("Start Send_READ_Task\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 1024 * 2, NULL, 1, NULL); // keep sending READ cmnd to TC4 every 1500ms
 
-    Serial.printf("Start TASK_BLE_CMD_handle\n");
+    Serial_in.printf("Start TASK_BLE_CMD_handle\n");
     xTaskCreate(TASK_BLE_CMD_handle, "TASK_BLE_CMD_handle", 10240, NULL, 1, &xTASK_BLE_CMD_handle); // once get cmnd form BLE service then do something
 
-    // Serial.printf("Start TASK_TIMER\n");
+    // Serial_in.printf("Start TASK_TIMER\n");
     // xTaskCreate(TASK_TIMER, "TASK_TIMER", 1024 * 4, NULL, 1, &xTask_TIMER); // stopwatch task
     // vTaskSuspend(xTask_TIMER);
 
@@ -531,7 +531,7 @@ void loop()
         delay(500);                  // give the bluetooth stack the chance to get things ready
         pServer->startAdvertising(); // restart advertising
 #if defined(DEBUG_MODE)
-        Serial.println("start advertising");
+        Serial_in.println("start advertising");
 #endif
         oldDeviceConnected = deviceConnected;
     }

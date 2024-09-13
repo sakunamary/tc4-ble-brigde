@@ -8,8 +8,8 @@
 #define VERSION "1.0.0"
 
 //#define DEBUG_MODE
-// #define TX D10
-// #define RX D8
+ #define TX D6
+ #define RX D7
 
 const int BUFFER_SIZE = 64;
 
