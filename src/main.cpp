@@ -191,39 +191,6 @@ class MyCallbacks : public BLECharacteristicCallbacks
     }
 };
 
-// void TASK_DATA_to_BLE(void *pvParameters)
-// {
-//     (void)pvParameters;
-//     uint8_t BLE_DATA_Buffer[BUFFER_SIZE];
-//     const TickType_t timeOut = 150;
-//     uint32_t ulNotificationValue; // 用来存放本任务的4个字节的notification value
-//     BaseType_t xResult;
-
-//     while (1)
-//     {
-//         xResult = xTaskNotifyWait(0x00,                 // 在运行前这个命令之前，先清除这几位
-//                                   0x00,                 // 运行后，重置所有的bits 0x00 or ULONG_MAX or 0xFFFFFFFF
-//                                   &ulNotificationValue, // 重置前的notification value
-//                                   portMAX_DELAY);       // 一直等待
-//         if (xResult == pdTRUE)
-//         {
-//             if (xQueueReceive(queue_data_to_BLE, &BLE_DATA_Buffer, timeOut) == pdPASS)
-
-//             { // 从接收QueueCMD 接收指令
-// #if defined(DEBUG_MODE)
-//                 Serial.println(String((char *)BLE_DATA_Buffer));
-// #endif
-//                 if (deviceConnected)
-//                 {
-//                     pTxCharacteristic->setValue(BLE_DATA_Buffer, sizeof(BLE_DATA_Buffer));
-//                     pTxCharacteristic->notify();
-//                 }
-//                 // data frame:PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
-//                 delay(50);
-//             }
-//         }
-//     }
-// }
 
 void startBluetooth()
 {
