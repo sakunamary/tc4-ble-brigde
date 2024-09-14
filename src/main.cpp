@@ -171,7 +171,7 @@ class MyCallbacks : public BLECharacteristicCallbacks
         int i = 0;
         while (i < rxValue.length() && rxValue.length() > 0)
         {
-            //Serial_in.print(rxValue[i]);
+            Serial_in.print(rxValue[i]);
             if (rxValue[i] == 0x0A)
             {
                 BLE_DATA_Buffer[i] = rxValue[i];                  // copy value
