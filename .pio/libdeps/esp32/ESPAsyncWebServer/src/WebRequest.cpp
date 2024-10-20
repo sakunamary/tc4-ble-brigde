@@ -35,7 +35,7 @@ enum { PARSE_REQ_START,
        PARSE_REQ_FAIL };
 
 AsyncWebServerRequest::AsyncWebServerRequest(AsyncWebServer* s, AsyncClient* c)
-    : _client(c), _server(s), _handler(NULL), _response(NULL), _temp(), _parseState(0), _version(0), _method(HTTP_ANY), _url(), _host(), _contentType(), _boundary(), _authorization(), _reqconntype(RCT_HTTP), _isDigest(false), _isMultipart(false), _isPlainPost(false), _expectingContinue(false), _contentLength(0), _parsedLength(0), _multiParseState(0), _boundaryPosition(0), _itemStartIndex(0), _itemSize(0), _itemName(), _itemFilename(), _itemType(), _itemValue(), _itemBuffer(0), _itemBufferIndex(0), _itemIsFile(false), _tempObject(NULL) {
+    : _client(c), _server(s), _handler(NULL), _response(NULL), _temp(), _parseState(0), _version(0), _method(HTTP_ANY), _url(), _host(), _contentType(), _boundary(), _authorization(), _reqconntype(RCT_HTTP), _authMethod(AsyncAuthType::AUTH_NONE), _isMultipart(false), _isPlainPost(false), _expectingContinue(false), _contentLength(0), _parsedLength(0), _multiParseState(0), _boundaryPosition(0), _itemStartIndex(0), _itemSize(0), _itemName(), _itemFilename(), _itemType(), _itemValue(), _itemBuffer(0), _itemBufferIndex(0), _itemIsFile(false), _tempObject(NULL) {
   c->onError([](void* r, AsyncClient* c, int8_t error) { (void)c; AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onError(error); }, this);
   c->onAck([](void* r, AsyncClient* c, size_t len, uint32_t time) { (void)c; AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onAck(len, time); }, this);
   c->onDisconnect([](void* r, AsyncClient* c) { AsyncWebServerRequest *req = (AsyncWebServerRequest*)r; req->_onDisconnect(); delete c; }, this);
@@ -48,8 +48,6 @@ AsyncWebServerRequest::~AsyncWebServerRequest() {
   _headers.clear();
 
   _pathParams.clear();
-
-  _interestingHeaders.clear();
 
   if (_response != NULL) {
     delete _response;
@@ -125,7 +123,6 @@ void AsyncWebServerRequest::_onData(void* buf, size_t len) {
           }
         }
         if (!_isPlainPost) {
-          // check if authenticated before calling the body
           if (_handler)
             _handler->handleBody(this, (uint8_t*)buf, len, _parsedLength, _contentLength);
           _parsedLength += len;
@@ -141,28 +138,17 @@ void AsyncWebServerRequest::_onData(void* buf, size_t len) {
       }
       if (_parsedLength == _contentLength) {
         _parseState = PARSE_REQ_END;
-        // check if authenticated before calling handleRequest and request auth instead
-        if (_handler)
-          _handler->handleRequest(this);
-        else
-          send(501);
+        _server->_runChain(this, [this]() { return _handler ? _handler->_runChain(this, [this]() { _handler->handleRequest(this); }) : send(501); });
+        if (!_sent) {
+          if (!_response)
+            send(501, T_text_plain, "Handler did not handle the request");
+          _client->setRxTimeout(0);
+          _response->_respond(this);
+          _sent = true;
+        }
       }
     }
     break;
-  }
-}
-
-void AsyncWebServerRequest::_removeNotInterestingHeaders() {
-  if (std::any_of(std::begin(_interestingHeaders), std::end(_interestingHeaders), [](const String& str) { return str.equalsIgnoreCase(T_ANY); }))
-    return; // nothing to do
-
-  for (auto iter = std::begin(_headers); iter != std::end(_headers);) {
-    const auto name = iter->name();
-
-    if (std::none_of(std::begin(_interestingHeaders), std::end(_interestingHeaders), [&name](const String& str) { return str.equalsIgnoreCase(name); }))
-      iter = _headers.erase(iter);
-    else
-      iter++;
   }
 }
 
@@ -274,7 +260,7 @@ bool AsyncWebServerRequest::_parseReqHead() {
   if (!_temp.startsWith(T_HTTP_1_0))
     _version = 1;
 
-  _temp = String();
+  _temp = emptyString;
   return true;
 }
 
@@ -294,31 +280,40 @@ bool AsyncWebServerRequest::_parseReqHeader() {
       }
     } else if (name.equalsIgnoreCase(T_Content_Length)) {
       _contentLength = atoi(value.c_str());
-    } else if (name.equalsIgnoreCase(T_EXPECT) && value == T_100_CONTINUE) {
+    } else if (name.equalsIgnoreCase(T_EXPECT) && value.equalsIgnoreCase(T_100_CONTINUE)) {
       _expectingContinue = true;
     } else if (name.equalsIgnoreCase(T_AUTH)) {
-      if (value.length() > 5 && value.substring(0, 5).equalsIgnoreCase(T_BASIC)) {
-        _authorization = value.substring(6);
-      } else if (value.length() > 6 && value.substring(0, 6).equalsIgnoreCase(T_DIGEST)) {
-        _isDigest = true;
-        _authorization = value.substring(7);
-      }
-    } else {
-      if (name.equalsIgnoreCase(T_UPGRADE) && value.equalsIgnoreCase(T_WS)) {
-        // WebSocket request can be uniquely identified by header: [Upgrade: websocket]
-        _reqconntype = RCT_WS;
-      } else if (name.equalsIgnoreCase(T_ACCEPT)){
-        String lowcase(value);
-        lowcase.toLowerCase();
-#ifndef ESP8266
-        const char* substr = std::strstr(lowcase.c_str(), T_text_event_stream);
-#else
-        const char* substr = std::strstr(lowcase.c_str(), String(T_text_event_stream).c_str());
-#endif
-        if (substr != NULL) {
-          // WebEvent request can be uniquely identified by header:  [Accept: text/event-stream]
-          _reqconntype = RCT_EVENT;
+      int space = value.indexOf(' ');
+      if (space == -1) {
+        _authorization = value;
+        _authMethod = AsyncAuthType::AUTH_OTHER;
+      } else {
+        String method = value.substring(0, space);
+        if (method.equalsIgnoreCase(T_BASIC)) {
+          _authMethod = AsyncAuthType::AUTH_BASIC;
+        } else if (method.equalsIgnoreCase(T_DIGEST)) {
+          _authMethod = AsyncAuthType::AUTH_DIGEST;
+        } else if (method.equalsIgnoreCase(T_BEARER)) {
+          _authMethod = AsyncAuthType::AUTH_BEARER;
+        } else {
+          _authMethod = AsyncAuthType::AUTH_OTHER;
         }
+        _authorization = value.substring(space + 1);
+      }
+    } else if (name.equalsIgnoreCase(T_UPGRADE) && value.equalsIgnoreCase(T_WS)) {
+      // WebSocket request can be uniquely identified by header: [Upgrade: websocket]
+      _reqconntype = RCT_WS;
+    } else if (name.equalsIgnoreCase(T_ACCEPT)) {
+      String lowcase(value);
+      lowcase.toLowerCase();
+#ifndef ESP8266
+      const char* substr = std::strstr(lowcase.c_str(), T_text_event_stream);
+#else
+      const char* substr = std::strstr(lowcase.c_str(), String(T_text_event_stream).c_str());
+#endif
+      if (substr != NULL) {
+        // WebEvent request can be uniquely identified by header:  [Accept: text/event-stream]
+        _reqconntype = RCT_EVENT;
       }
     }
     _headers.emplace_back(name, value);
@@ -327,7 +322,7 @@ bool AsyncWebServerRequest::_parseReqHeader() {
   _temp.clear();
 #else
   // Ancient PRI core does not have String::clear() method 8-()
-  _temp = String();
+  _temp = emptyString;
 #endif
   return true;
 }
@@ -345,10 +340,10 @@ void AsyncWebServerRequest::_parsePlainPostChar(uint8_t data) {
     _params.emplace_back(urlDecode(name), urlDecode(value), true);
 
 #ifndef TARGET_RP2040
-  _temp.clear();
+    _temp.clear();
 #else
-  // Ancient PRI core does not have String::clear() method 8-()
-  _temp = String();
+    // Ancient PRI core does not have String::clear() method 8-()
+    _temp = emptyString;
 #endif
   }
 }
@@ -356,7 +351,7 @@ void AsyncWebServerRequest::_parsePlainPostChar(uint8_t data) {
 void AsyncWebServerRequest::_handleUploadByte(uint8_t data, bool last) {
   _itemBuffer[_itemBufferIndex++] = data;
 
-  if (last || _itemBufferIndex == 1460) {
+  if (last || _itemBufferIndex == RESPONSE_STREAM_BUFFER_SIZE) {
     // check if authenticated before calling the upload
     if (_handler)
       _handler->handleUpload(this, _itemFilename, _itemSize - _itemBufferIndex, _itemBuffer, _itemBufferIndex, false);
@@ -390,10 +385,10 @@ void AsyncWebServerRequest::_parseMultipartPostByte(uint8_t data, bool last) {
 
   if (!_parsedLength) {
     _multiParseState = EXPECT_BOUNDARY;
-    _temp = String();
-    _itemName = String();
-    _itemFilename = String();
-    _itemType = String();
+    _temp = emptyString;
+    _itemName = emptyString;
+    _itemFilename = emptyString;
+    _itemType = emptyString;
   }
 
   if (_multiParseState == WAIT_FOR_RETURN1) {
@@ -450,17 +445,17 @@ void AsyncWebServerRequest::_parseMultipartPostByte(uint8_t data, bool last) {
             _itemIsFile = true;
           }
         }
-        _temp = String();
+        _temp = emptyString;
       } else {
         _multiParseState = WAIT_FOR_RETURN1;
         // value starts from here
         _itemSize = 0;
         _itemStartIndex = _parsedLength;
-        _itemValue = String();
+        _itemValue = emptyString;
         if (_itemIsFile) {
           if (_itemBuffer)
             free(_itemBuffer);
-          _itemBuffer = (uint8_t*)malloc(1460);
+          _itemBuffer = (uint8_t*)malloc(RESPONSE_STREAM_BUFFER_SIZE);
           if (_itemBuffer == NULL) {
             _multiParseState = PARSE_ERROR;
             return;
@@ -514,7 +509,6 @@ void AsyncWebServerRequest::_parseMultipartPostByte(uint8_t data, bool last) {
         _params.emplace_back(_itemName, _itemValue, true);
       } else {
         if (_itemSize) {
-          // check if authenticated before calling the upload
           if (_handler)
             _handler->handleUpload(this, _itemFilename, _itemSize - _itemBufferIndex, _itemBuffer, _itemBufferIndex, true);
           _itemBufferIndex = 0;
@@ -583,20 +577,22 @@ void AsyncWebServerRequest::_parseLine() {
       // end of headers
       _server->_rewriteRequest(this);
       _server->_attachHandler(this);
-      _removeNotInterestingHeaders();
       if (_expectingContinue) {
         String response(T_HTTP_100_CONT);
         _client->write(response.c_str(), response.length());
       }
-      // check handler for authentication
       if (_contentLength) {
         _parseState = PARSE_REQ_BODY;
       } else {
         _parseState = PARSE_REQ_END;
-        if (_handler)
-          _handler->handleRequest(this);
-        else
-          send(501);
+        _server->_runChain(this, [this]() { return _handler ? _handler->_runChain(this, [this]() { _handler->handleRequest(this); }) : send(501); });
+        if (!_sent) {
+          if (!_response)
+            send(501, T_text_plain, "Handler did not handle the request");
+          _client->setRxTimeout(0);
+          _response->_respond(this);
+          _sent = true;
+        }
       }
     } else
       _parseReqHeader();
@@ -624,7 +620,6 @@ bool AsyncWebServerRequest::hasHeader(const __FlashStringHelper* data) const {
 
 const AsyncWebHeader* AsyncWebServerRequest::getHeader(const char* name) const {
   auto iter = std::find_if(std::begin(_headers), std::end(_headers), [&name](const AsyncWebHeader& header) { return header.name().equalsIgnoreCase(name); });
-
   return (iter == std::end(_headers)) ? nullptr : &(*iter);
 }
 
@@ -650,13 +645,28 @@ const AsyncWebHeader* AsyncWebServerRequest::getHeader(size_t num) const {
   return &(*std::next(_headers.cbegin(), num));
 }
 
+size_t AsyncWebServerRequest::getHeaderNames(std::vector<const char*>& names) const {
+  const size_t size = _headers.size();
+  names.reserve(size);
+  for (const auto& h : _headers) {
+    names.push_back(h.name().c_str());
+  }
+  return size;
+}
+
+bool AsyncWebServerRequest::removeHeader(const char* name) {
+  const size_t size = _headers.size();
+  _headers.remove_if([name](const AsyncWebHeader& header) { return header.name().equalsIgnoreCase(name); });
+  return size != _headers.size();
+}
+
 size_t AsyncWebServerRequest::params() const {
   return _params.size();
 }
 
-bool AsyncWebServerRequest::hasParam(const String& name, bool post, bool file) const {
+bool AsyncWebServerRequest::hasParam(const char* name, bool post, bool file) const {
   for (const auto& p : _params) {
-    if (p.name() == name && p.isPost() == post && p.isFile() == file) {
+    if (p.name().equals(name) && p.isPost() == post && p.isFile() == file) {
       return true;
     }
   }
@@ -684,117 +694,96 @@ const AsyncWebParameter* AsyncWebServerRequest::getParam(size_t num) const {
   return &(*std::next(_params.cbegin(), num));
 }
 
-void AsyncWebServerRequest::addInterestingHeader(const char* name) {
-  if (std::none_of(std::begin(_interestingHeaders), std::end(_interestingHeaders), [&name](const String& str) { return str.equalsIgnoreCase(name); }))
-    _interestingHeaders.emplace_back(name);
+const String& AsyncWebServerRequest::getAttribute(const char* name, const String& defaultValue) const {
+  auto it = _attributes.find(name);
+  return it != _attributes.end() ? it->second : defaultValue;
+}
+bool AsyncWebServerRequest::getAttribute(const char* name, bool defaultValue) const {
+  auto it = _attributes.find(name);
+  return it != _attributes.end() ? it->second == "1" : defaultValue;
+}
+long AsyncWebServerRequest::getAttribute(const char* name, long defaultValue) const {
+  auto it = _attributes.find(name);
+  return it != _attributes.end() ? it->second.toInt() : defaultValue;
+}
+float AsyncWebServerRequest::getAttribute(const char* name, float defaultValue) const {
+  auto it = _attributes.find(name);
+  return it != _attributes.end() ? it->second.toFloat() : defaultValue;
+}
+double AsyncWebServerRequest::getAttribute(const char* name, double defaultValue) const {
+  auto it = _attributes.find(name);
+  return it != _attributes.end() ? it->second.toDouble() : defaultValue;
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(int code, const String& contentType, const String& content) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(int code, const char* contentType, const char* content, AwsTemplateProcessor callback) {
+  if (callback)
+    return new AsyncProgmemResponse(code, contentType, (const uint8_t*)content, strlen(content), callback);
   return new AsyncBasicResponse(code, contentType, content);
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(int code, const String& contentType, const uint8_t* content, size_t len, AwsTemplateProcessor callback) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(int code, const char* contentType, const uint8_t* content, size_t len, AwsTemplateProcessor callback) {
   return new AsyncProgmemResponse(code, contentType, content, len, callback);
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(int code, const String& contentType, PGM_P content, AwsTemplateProcessor callback) {
-  return new AsyncProgmemResponse(code, contentType, (const uint8_t*)content, strlen_P(content), callback);
-}
-
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(FS& fs, const String& path, const String& contentType, bool download, AwsTemplateProcessor callback) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(FS& fs, const String& path, const char* contentType, bool download, AwsTemplateProcessor callback) {
   if (fs.exists(path) || (!download && fs.exists(path + T__gz)))
     return new AsyncFileResponse(fs, path, contentType, download, callback);
   return NULL;
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(File content, const String& path, const String& contentType, bool download, AwsTemplateProcessor callback) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(File content, const String& path, const char* contentType, bool download, AwsTemplateProcessor callback) {
   if (content == true)
     return new AsyncFileResponse(content, path, contentType, download, callback);
   return NULL;
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(Stream& stream, const String& contentType, size_t len, AwsTemplateProcessor callback) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(Stream& stream, const char* contentType, size_t len, AwsTemplateProcessor callback) {
   return new AsyncStreamResponse(stream, contentType, len, callback);
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(const String& contentType, size_t len, AwsResponseFiller callback, AwsTemplateProcessor templateCallback) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse(const char* contentType, size_t len, AwsResponseFiller callback, AwsTemplateProcessor templateCallback) {
   return new AsyncCallbackResponse(contentType, len, callback, templateCallback);
 }
 
-AsyncWebServerResponse* AsyncWebServerRequest::beginChunkedResponse(const String& contentType, AwsResponseFiller callback, AwsTemplateProcessor templateCallback) {
+AsyncWebServerResponse* AsyncWebServerRequest::beginChunkedResponse(const char* contentType, AwsResponseFiller callback, AwsTemplateProcessor templateCallback) {
   if (_version)
     return new AsyncChunkedResponse(contentType, callback, templateCallback);
   return new AsyncCallbackResponse(contentType, 0, callback, templateCallback);
 }
 
-AsyncResponseStream* AsyncWebServerRequest::beginResponseStream(const String& contentType, size_t bufferSize) {
+AsyncResponseStream* AsyncWebServerRequest::beginResponseStream(const char* contentType, size_t bufferSize) {
   return new AsyncResponseStream(contentType, bufferSize);
 }
 
+AsyncWebServerResponse* AsyncWebServerRequest::beginResponse_P(int code, const String& contentType, PGM_P content, AwsTemplateProcessor callback) {
+  return new AsyncProgmemResponse(code, contentType, (const uint8_t*)content, strlen_P(content), callback);
+}
+
 void AsyncWebServerRequest::send(AsyncWebServerResponse* response) {
+  if (_sent)
+    return;
+  if (_response)
+    delete _response;
   _response = response;
   if (_response == NULL) {
     _client->close(true);
     _onDisconnect();
+    _sent = true;
     return;
   }
-  if (!_response->_sourceValid()) {
-    delete response;
-    _response = NULL;
+  if (!_response->_sourceValid())
     send(500);
-  } else {
-    _client->setRxTimeout(0);
-    _response->_respond(this);
-  }
 }
 
-void AsyncWebServerRequest::send(int code, const String& contentType, const String& content) {
-  send(beginResponse(code, contentType, content));
-}
-
-void AsyncWebServerRequest::send(int code, const String& contentType, const uint8_t* content, size_t len, AwsTemplateProcessor callback) {
-  send(beginResponse(code, contentType, content, len, callback));
-}
-
-void AsyncWebServerRequest::send(int code, const String& contentType, PGM_P content, AwsTemplateProcessor callback) {
-  send(beginResponse(code, contentType, content, callback));
-}
-
-void AsyncWebServerRequest::send(FS& fs, const String& path, const String& contentType, bool download, AwsTemplateProcessor callback) {
-  if (fs.exists(path) || (!download && fs.exists(path + T__gz))) {
-    send(beginResponse(fs, path, contentType, download, callback));
-  } else
-    send(404);
-}
-
-void AsyncWebServerRequest::send(File content, const String& path, const String& contentType, bool download, AwsTemplateProcessor callback) {
-  if (content == true) {
-    send(beginResponse(content, path, contentType, download, callback));
-  } else
-    send(404);
-}
-
-void AsyncWebServerRequest::send(Stream& stream, const String& contentType, size_t len, AwsTemplateProcessor callback) {
-  send(beginResponse(stream, contentType, len, callback));
-}
-
-void AsyncWebServerRequest::send(const String& contentType, size_t len, AwsResponseFiller callback, AwsTemplateProcessor templateCallback) {
-  send(beginResponse(contentType, len, callback, templateCallback));
-}
-
-void AsyncWebServerRequest::sendChunked(const String& contentType, AwsResponseFiller callback, AwsTemplateProcessor templateCallback) {
-  send(beginChunkedResponse(contentType, callback, templateCallback));
-}
-
-void AsyncWebServerRequest::redirect(const char* url) {
-  AsyncWebServerResponse* response = beginResponse(302);
+void AsyncWebServerRequest::redirect(const char* url, int code) {
+  AsyncWebServerResponse* response = beginResponse(code);
   response->addHeader(T_LOCATION, url);
   send(response);
 }
 
 bool AsyncWebServerRequest::authenticate(const char* username, const char* password, const char* realm, bool passwordIsHash) {
   if (_authorization.length()) {
-    if (_isDigest)
+    if (_authMethod == AsyncAuthType::AUTH_DIGEST)
       return checkDigestAuthentication(_authorization.c_str(), methodToString(), username, password, realm, passwordIsHash, NULL, NULL, NULL);
     else if (!passwordIsHash)
       return checkBasicAuthentication(_authorization.c_str(), username, password);
@@ -808,7 +797,7 @@ bool AsyncWebServerRequest::authenticate(const char* hash) {
   if (!_authorization.length() || hash == NULL)
     return false;
 
-  if (_isDigest) {
+  if (_authMethod == AsyncAuthType::AUTH_DIGEST) {
     String hStr = String(hash);
     int separator = hStr.indexOf(':');
     if (separator <= 0)
@@ -823,23 +812,45 @@ bool AsyncWebServerRequest::authenticate(const char* hash) {
     return checkDigestAuthentication(_authorization.c_str(), methodToString(), username.c_str(), hStr.c_str(), realm.c_str(), true, NULL, NULL, NULL);
   }
 
+  // Basic Auth, Bearer Auth, or other
   return (_authorization.equals(hash));
 }
 
-void AsyncWebServerRequest::requestAuthentication(const char* realm, bool isDigest) {
-  AsyncWebServerResponse* r = beginResponse(401);
-  if (!isDigest && realm == NULL) {
-    r->addHeader(T_WWW_AUTH, T_BASIC_REALM_LOGIN_REQ);
-  } else if (!isDigest) {
-    String header(T_BASIC_REALM);
-    header.concat(realm);
-    header += '"';
-    r->addHeader(T_WWW_AUTH, header);
-  } else {
-    String header(T_DIGEST_);
-    header.concat(requestDigestAuthentication(realm));
-    r->addHeader(T_WWW_AUTH, header);
+void AsyncWebServerRequest::requestAuthentication(AsyncAuthType method, const char* realm, const char* _authFailMsg) {
+  if (!realm)
+    realm = T_LOGIN_REQ;
+
+  AsyncWebServerResponse* r = _authFailMsg ? beginResponse(401, T_text_html, _authFailMsg) : beginResponse(401);
+
+  switch (method) {
+    case AsyncAuthType::AUTH_BASIC: {
+      String header;
+      header.reserve(strlen(T_BASIC_REALM) + strlen(realm) + 1);
+      header.concat(T_BASIC_REALM);
+      header.concat(realm);
+      header.concat('"');
+      r->addHeader(T_WWW_AUTH, header.c_str());
+      break;
+    }
+    case AsyncAuthType::AUTH_DIGEST: {
+      size_t len = strlen(T_DIGEST_) + strlen(T_realm__) + strlen(T_auth_nonce) + 32 + strlen(T__opaque) + 32 + 1;
+      String header;
+      header.reserve(len + strlen(realm));
+      header.concat(T_DIGEST_);
+      header.concat(T_realm__);
+      header.concat(realm);
+      header.concat(T_auth_nonce);
+      header.concat(genRandomMD5());
+      header.concat(T__opaque);
+      header.concat(genRandomMD5());
+      header.concat((char)0x22); // '"'
+      r->addHeader(T_WWW_AUTH, header.c_str());
+      break;
+    }
+    default:
+      break;
   }
+
   send(r);
 }
 
@@ -949,7 +960,7 @@ const char* AsyncWebServerRequest::methodToString() const {
     return T_OPTIONS;
   return T_UNKNOWN;
 }
-#else // ESP8266
+#else  // ESP8266
 const __FlashStringHelper* AsyncWebServerRequest::methodToString() const {
   if (_method == HTTP_ANY)
     return FPSTR(T_ANY);
@@ -988,7 +999,7 @@ const char* AsyncWebServerRequest::requestedConnTypeToString() const {
       return T_ERROR;
   }
 }
-#else // ESP8266
+#else  // ESP8266
 const __FlashStringHelper* AsyncWebServerRequest::requestedConnTypeToString() const {
   switch (_reqconntype) {
     case RCT_NOT_USED:

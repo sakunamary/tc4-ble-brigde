@@ -1,7 +1,7 @@
 # AsyncTCP
 
 [![License: LGPL 3.0](https://img.shields.io/badge/License-LGPL%203.0-yellow.svg)](https://opensource.org/license/lgpl-3-0/)
-[![Continuous Integration](https://github.com/mathieucarbou/AsyncTCP/actions/workflows/push.yml/badge.svg)](https://github.com/mathieucarbou/AsyncTCP/actions/workflows/push.yml)
+[![Continuous Integration](https://github.com/mathieucarbou/AsyncTCP/actions/workflows/ci.yml/badge.svg)](https://github.com/mathieucarbou/AsyncTCP/actions/workflows/ci.yml)
 [![PlatformIO Registry](https://badges.registry.platformio.org/packages/mathieucarbou/library/AsyncTCP.svg)](https://registry.platformio.org/libraries/mathieucarbou/AsyncTCP)
 
 A fork of the [AsyncTCP](https://github.com/me-no-dev/AsyncTCP) library by [@me-no-dev](https://github.com/me-no-dev) for [ESPHome](https://esphome.io).
@@ -21,8 +21,13 @@ The base classes on which everything else is built. They expose all possible sce
 - All improvements from [ESPHome fork](https://github.com/esphome/AsyncTCP)
 - Reverted back `library.properties` for Arduino IDE users
 - Arduino 3 / ESP-IDF 5 compatibility
-- Point to `mathieucarbou/AsyncTCP @ ^3.2.3`
 - IPv6 support
+
+## Coordinates
+
+```
+mathieucarbou/AsyncTCP @ ^3.2.10
+```
 
 ## Important recommendations
 
@@ -32,7 +37,7 @@ Here are some recommendations to avoid them.
 1. Set the running core to be on the same core of your application (usually core 1) `-D CONFIG_ASYNC_TCP_RUNNING_CORE=1`
 2. Set the stack size appropriately with `-D CONFIG_ASYNC_TCP_STACK_SIZE=16384`.
    The default value of `16384` might be too much for your project.
-   You can look at the [MycilaTaskMonitor](https://oss.carbou.me/MycilaTaskMonitor) project to monitor the stack usage.
+   You can look at the [MycilaTaskMonitor](https://mathieu.carbou.me/MycilaTaskMonitor) project to monitor the stack usage.
 3. You can change **if you know what you are doing** the task priority with `-D CONFIG_ASYNC_TCP_PRIORITY=10`.
    Default is `10`.
 4. You can increase the queue size with `-D CONFIG_ASYNC_TCP_QUEUE_SIZE=128`.

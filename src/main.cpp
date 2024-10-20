@@ -27,7 +27,7 @@ BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
-WebServer server(80);
+AsyncWebServer server(80);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
@@ -76,27 +76,11 @@ String IpAddressToString(const IPAddress &ipAddress)
            String(ipAddress[3]);
 }
 
-// Handle root url (/)
-void handle_root()
-{
-    char index_html[2048];
-    String ver = VERSION;
-    snprintf(index_html, 2048,
-             "<html>\
-<head>\
-<title>MATCH BOX SETUP</title>\
-    </head> \
-    <body>\
-        <main>\
-        <h1 align='center'>BLE version:%s</h1>\
-        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
-        </main>\
-        </div>\
-    </body>\
-</html>\
-",
-             ver);
-    server.send(200, "text/html", index_html);
+String processor(const String &var) {
+  if (var == "version") {
+    return VERSION;
+  }
+  return String();
 }
 
 void startBluetooth()
@@ -121,7 +105,7 @@ void startBluetooth()
             // init wifi
             // Serial.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
-            WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
+            WiFi.softAP(deviceName, "matchbox8888"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
         }
     }
@@ -253,7 +237,11 @@ void setup()
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
     // Serial.printf("Start Send_READ_Task\n");
 
-    server.on("/", handle_root);
+
+    // INIT OTA service
+    // server.on("/", handle_root);
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+              { request->send(200, "text/html", index_html, processor); });
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
     ElegantOTA.onStart(onOTAStart);
@@ -265,6 +253,6 @@ void setup()
 }
 void loop()
 {
-    server.handleClient();
+    //server.handleClient();
     ElegantOTA.loop();
 }
