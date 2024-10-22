@@ -21,13 +21,16 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WebServer.h>
+
+// #include <WiFi.h>
+// #include <WiFiClient.h>
+// #include <AsyncTCP.h>
+// #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
 
 BleSerial SerialBT;
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
-
-AsyncWebServer server(80);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
@@ -37,11 +40,18 @@ uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 unsigned long ota_progress_millis = 0;
 
+// AsyncWebServer server(80);
+WebServer server(80);
 void onOTAStart()
 {
     // Log when OTA has started
     // Serial.println("OTA update started!");
     // <Add your own code here>
+    vTaskDelete(xTASK_Send_READ_CMDtoTC4_handle);
+    vTaskDelete(xTASK_ReadSerialTask_handle);
+    vTaskDelete(xTASK_ReadBtTask_handle);
+    // vTaskSuspendAll();
+    // vTaskDelete();
 }
 
 void onOTAProgress(size_t current, size_t final)
@@ -76,12 +86,37 @@ String IpAddressToString(const IPAddress &ipAddress)
            String(ipAddress[3]);
 }
 
-String processor(const String &var) {
-  if (var == "version") {
-    return VERSION;
-  }
-  return String();
+// Handle root url (/)
+void handle_root()
+{
+    char index_html[2048];
+    String ver = VERSION;
+    snprintf(index_html, 2048,
+             "<html>\
+<head>\
+<title>MATCH BOX SETUP</title>\
+    </head> \
+    <body>\
+        <main>\
+        <h1 align='center'>BLE version:%s</h1>\
+        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
+        </main>\
+        </div>\
+    </body>\
+</html>\
+",
+             ver);
+    server.send(200, "text/html", index_html);
 }
+
+// String processor(const String &var)
+// {
+//     if (var == "version")
+//     {
+//         return VERSION;
+//     }
+//     return String();
+// }
 
 void startBluetooth()
 {
@@ -97,20 +132,23 @@ void startBluetooth()
     while (WiFi.status() != WL_CONNECTED)
     {
 
-        delay(1000);
+        delay(500);
         // Serial.println("wifi not ready");
 
         if (tries++ > 2)
         {
             // init wifi
-            // Serial.println("WiFi.mode(AP):");
+            Serial.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
             WiFi.softAP(deviceName, "matchbox8888"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
         }
     }
-    // show AP's IP
-    // Serial.printf("IP:");
+
+#if defined(DEBUG_MODE)
+// show AP's IP
+// Serial.printf("IP:");
+#endif
     if (WiFi.getMode() == 2) // 1:STA mode 2:AP mode
     {
         Serial.println(IpAddressToString(WiFi.softAPIP()));
@@ -121,17 +159,21 @@ void startBluetooth()
         Serial.println(IpAddressToString(WiFi.localIP()));
         local_IP = IpAddressToString(WiFi.localIP());
     }
+   // Serial.printf("Start Bluetooth\n");
 }
 
 // Task for reading Serial Port
 void ReadSerialTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
-    // String cmd_check;
+
     int j = 0;
+    // #if defined(DEBUG_MODE)
+    //     String cmd_check;
+    // #endif
     while (true)
     {
         if (Serial_in.available())
@@ -139,13 +181,15 @@ void ReadSerialTask(void *e)
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-                // cmd_check = String((char *)serialReadBuffer);
-                // Serial.println(cmd_check);
+                // #if defined(DEBUG_MODE)
+                //                 cmd_check = String((char *)serialReadBuffer);
+                //                 Serial.println(cmd_check);
+                // #endif
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
                 {
                     while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
                     {
-                        if (serialReadBuffer[j] == '\n')
+                        if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                         {
                             j = 0; // clearing
                             break; // 跳出循环
@@ -157,7 +201,9 @@ void ReadSerialTask(void *e)
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    // Serial.printf(BLE_Send_out);
+#if defined(DEBUG_MODE)
+                    Serial.printf(BLE_Send_out);
+#endif
                     SerialBT.printf(BLE_Send_out);
                 }
                 xSemaphoreGive(xserialReadBufferMutex);
@@ -172,7 +218,7 @@ void ReadSerialTask(void *e)
 void ReadBtTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     while (true)
     {
         if (SerialBT.available())
@@ -181,7 +227,9 @@ void ReadBtTask(void *e)
             {
                 auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
                 Serial_in.write(bleReadBuffer, count);
+#if defined(DEBUG_MODE)
                 Serial.write(bleReadBuffer, count);
+#endif
                 xSemaphoreGive(xserialReadBufferMutex);
             }
             delay(50);
@@ -194,13 +242,14 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     (void)pvParameters;
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
+    const TickType_t xTimeOut = 300 / portTICK_PERIOD_MS;
     String cmd;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+        if (xSemaphoreTake(xserialReadBufferMutex, xTimeOut) == pdPASS)
         {
             Serial_in.printf("READ\n");
             xSemaphoreGive(xserialReadBufferMutex);
@@ -212,8 +261,8 @@ void setup()
 {
 
     // Disable watchdog timers
-    disableCore0WDT();
-    disableCore1WDT();
+    // disableCore0WDT();
+    // disableCore1WDT();
     disableLoopWDT();
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
@@ -230,18 +279,24 @@ void setup()
     startBluetooth();
 
     // Start tasks
-    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
-    // Serial.printf("Start ReadSerialTask\n");
-    xTaskCreate(ReadBtTask, "ReadBtTask", 10240, NULL, 1, NULL);
-    // Serial.printf("Start ReadBtTask\n");
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 1, NULL);
-    // Serial.printf("Start Send_READ_Task\n");
-
+    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start Send_READ_Task\n");
+#endif
+    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadSerialTask\n");
+#endif
+    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 10240, NULL, 1, &xTASK_ReadBtTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadBtTask\n");
+#endif
 
     // INIT OTA service
-    // server.on("/", handle_root);
-    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-              { request->send(200, "text/html", index_html, processor); });
+    server.on("/", handle_root);
+    // server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+    //           { request->send(200, "text/html", index_html, processor); });
+
     ElegantOTA.begin(&server); // Start ElegantOTA
     // ElegantOTA callbacks
     ElegantOTA.onStart(onOTAStart);
@@ -249,10 +304,12 @@ void setup()
     ElegantOTA.onEnd(onOTAEnd);
 
     server.begin();
-    // Serial.println("HTTP server started");
+#if defined(DEBUG_MODE)
+    Serial.println("HTTP server started");
+#endif
 }
 void loop()
 {
-    //server.handleClient();
+    server.handleClient();
     ElegantOTA.loop();
 }

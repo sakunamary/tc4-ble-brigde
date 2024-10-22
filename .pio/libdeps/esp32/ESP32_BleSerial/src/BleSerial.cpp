@@ -23,8 +23,8 @@ void BleSerial::onDisconnect(BLEServer *pServer)
 
 int BleSerial::read()
 {
-	uint8_t result = this->receiveBuffer.pop();
-	if (result == (uint8_t)'\n')
+	int result = this->receiveBuffer.pop();
+	if (result == '\n')
 	{
 		this->numAvailableLines--;
 	}
@@ -36,7 +36,7 @@ size_t BleSerial::readBytes(uint8_t *buffer, size_t bufferSize)
 	int i = 0;
 	while (i < bufferSize && available())
 	{
-		buffer[i] = this->receiveBuffer.pop();
+		buffer[i] = (uint8_t) this->receiveBuffer.pop();
 		i++;
 	}
 	return i;
@@ -164,7 +164,7 @@ void BleSerial::onWrite(BLECharacteristic *pCharacteristic)
 {
 	if (pCharacteristic->getUUID().toString() == BLE_RX_UUID)
 	{
-		std::string value = pCharacteristic->getValue();
+		auto value = pCharacteristic->getValue();
 
 		for (int i = 0; i < value.length(); i++)
 			receiveBuffer.add(value[i]);
