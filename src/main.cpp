@@ -171,24 +171,24 @@ void ReadSerialTask(void *e)
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
     uint8_t Last_serialReadBuffer_clean_OUT[BUFFER_SIZE];
     int j = 0;
-    // #if defined(DEBUG_MODE)
-    //     String cmd_check;
-    // #endif
+#if defined(DEBUG_MODE)
+    String cmd_check;
+#endif
     while (true)
     {
         if (Serial_in.available())
         {
             // clean up buffer
-            memset(&BLE_Send_out, '\0', BLE_BUFFER_SIZE);
-            memset(&serialReadBuffer_clean_OUT, '\0', BLE_BUFFER_SIZE);
+            // memset(&BLE_Send_out, '\0', BLE_BUFFER_SIZE);
+            // memset(&serialReadBuffer_clean_OUT, '\0', BLE_BUFFER_SIZE);
 
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-                // #if defined(DEBUG_MODE)
-                //                 cmd_check = String((char *)serialReadBuffer);
-                //                 Serial.println(cmd_check);
-                // #endif
+#if defined(DEBUG_MODE)
+                cmd_check = String((char *)serialReadBuffer);
+                Serial.println(cmd_check);
+#endif
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
                 {
                     while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
@@ -199,22 +199,25 @@ void ReadSerialTask(void *e)
                             break; // 跳出循环
                         }
                         else
-                        { // 增加0-9 和 ，的ascii过滤
-                            if (serialReadBuffer[j] >= 0x30 && serialReadBuffer[j] <= 0x39 && serialReadBuffer[j] == 0x2C && serialReadBuffer[j] == 0x2E)
-                            {
-                                serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-                                j++;
-                            }
-                            else
-                            { // 如果数据不是0-9和，就发送上一条数据
-                                memcpy(&serialReadBuffer_clean_OUT, &Last_serialReadBuffer_clean_OUT, BUFFER_SIZE);
-                                j = 0; // clearing
-                                break; // 跳出循环
-                            }
+                        {
+                            serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                            j++;
+                            // 增加0-9 和 ，的ascii过滤
+                            // if (serialReadBuffer[j] >= 0x30 && serialReadBuffer[j] <= 0x39 && serialReadBuffer[j] == 0x2C && serialReadBuffer[j] == 0x2E)
+                            // {
+                            //     serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                            //     j++;
+                            // }
+                            // else
+                            // { // 如果数据不是0-9和，就发送上一条数据
+                            //     memcpy(&serialReadBuffer_clean_OUT, &Last_serialReadBuffer_clean_OUT, BUFFER_SIZE);
+                            //     j = 0; // clearing
+                            //     break; // 跳出循环
+                            // }
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    memcpy(&Last_serialReadBuffer_clean_OUT, &serialReadBuffer_clean_OUT, BUFFER_SIZE);
+                    // memcpy(&Last_serialReadBuffer_clean_OUT, &serialReadBuffer_clean_OUT, BUFFER_SIZE);
 #if defined(DEBUG_MODE)
                     Serial.printf(BLE_Send_out);
 #endif
@@ -292,10 +295,7 @@ void setup()
     startBluetooth();
 
     // Start tasks
-    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start Send_READ_Task\n");
-#endif
+
     xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start ReadSerialTask\n");
@@ -303,6 +303,12 @@ void setup()
     xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 10240, NULL, 1, &xTASK_ReadBtTask_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start ReadBtTask\n");
+#endif
+
+
+    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start Send_READ_Task\n");
 #endif
 
     // INIT OTA service

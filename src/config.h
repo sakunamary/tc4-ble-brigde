@@ -7,13 +7,13 @@
 
 //MATCH BOX MODULES
 
-#define VERSION "1.1.6c"
+#define VERSION "1.1.6d"
 
 //#define DEBUG_MODE
 #define TX 17
 #define RX 16
 
-const int BUFFER_SIZE = 64;
+const int BUFFER_SIZE = 48;
 
 
 static TaskHandle_t xTASK_Send_READ_CMDtoTC4_handle = NULL;
