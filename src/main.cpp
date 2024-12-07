@@ -159,7 +159,7 @@ void startBluetooth()
         Serial.println(IpAddressToString(WiFi.localIP()));
         local_IP = IpAddressToString(WiFi.localIP());
     }
-   // Serial.printf("Start Bluetooth\n");
+    // Serial.printf("Start Bluetooth\n");
 }
 
 // Task for reading Serial Port
@@ -169,7 +169,7 @@ void ReadSerialTask(void *e)
     const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
-
+    uint8_t Last_serialReadBuffer_clean_OUT[BUFFER_SIZE];
     int j = 0;
     // #if defined(DEBUG_MODE)
     //     String cmd_check;
@@ -178,6 +178,10 @@ void ReadSerialTask(void *e)
     {
         if (Serial_in.available())
         {
+            // clean up buffer
+            memset(&BLE_Send_out, '\0', BLE_BUFFER_SIZE);
+            memset(&serialReadBuffer_clean_OUT, '\0', BLE_BUFFER_SIZE);
+
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
@@ -195,12 +199,22 @@ void ReadSerialTask(void *e)
                             break; // 跳出循环
                         }
                         else
-                        {
-                            serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-                            j++;
+                        { // 增加0-9 和 ，的ascii过滤
+                            if (serialReadBuffer[j] >= 0x30 && serialReadBuffer[j] <= 0x39 && serialReadBuffer[j] == 0x2C && serialReadBuffer[j] == 0x2E)
+                            {
+                                serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                                j++;
+                            }
+                            else
+                            { // 如果数据不是0-9和，就发送上一条数据
+                                memcpy(&serialReadBuffer_clean_OUT, &Last_serialReadBuffer_clean_OUT, BUFFER_SIZE);
+                                j = 0; // clearing
+                                break; // 跳出循环
+                            }
                         }
                     }
                     sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
+                    memcpy(&Last_serialReadBuffer_clean_OUT, &serialReadBuffer_clean_OUT, BUFFER_SIZE);
 #if defined(DEBUG_MODE)
                     Serial.printf(BLE_Send_out);
 #endif
@@ -208,7 +222,6 @@ void ReadSerialTask(void *e)
                 }
                 xSemaphoreGive(xserialReadBufferMutex);
             }
-
             delay(50);
         }
     }
