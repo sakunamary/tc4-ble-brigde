@@ -7,7 +7,7 @@
 
 //MATCH BOX MODULES
 
-#define VERSION "1.1.6d"
+#define VERSION "1.1.6f"
 
 //#define DEBUG_MODE
 #define TX 17
