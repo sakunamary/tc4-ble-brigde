@@ -27,9 +27,11 @@
 // #include <AsyncTCP.h>
 // #include <ESPAsyncWebServer.h>
 #include <ElegantOTA.h>
+#include <StringTokenizer.h>
 
 BleSerial SerialBT;
 String local_IP;
+String CMD_Data[8];
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
@@ -169,8 +171,10 @@ void ReadSerialTask(void *e)
     const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
-    uint8_t Last_serialReadBuffer_clean_OUT[BUFFER_SIZE];
     int j = 0;
+    int i = 0;
+
+    String CMD_String;
 #if defined(DEBUG_MODE)
     String cmd_check;
 #endif
@@ -178,16 +182,13 @@ void ReadSerialTask(void *e)
     {
         if (Serial_in.available())
         {
-            // clean up buffer
-            // memset(&BLE_Send_out, '\0', BLE_BUFFER_SIZE);
-            // memset(&serialReadBuffer_clean_OUT, '\0', BLE_BUFFER_SIZE);
-
             if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+                CMD_String = String((char *)serialReadBuffer);
 #if defined(DEBUG_MODE)
-                cmd_check = String((char *)serialReadBuffer);
-                Serial.println(cmd_check);
+                // cmd_check = String((char *)serialReadBuffer);
+                // Serial.println(cmd_check);
 #endif
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
                 {
@@ -195,37 +196,43 @@ void ReadSerialTask(void *e)
                     {
                         if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                         {
-                            j = 0; // clearing
-                            break; // 跳出循环
+                            //CMD_String += serialReadBuffer[j]; // copy value
+                            j = 0;                             // clearing
+                            break;                             // 跳出循环
                         }
                         else
                         {
                             serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                            //CMD_String += serialReadBuffer[j];                   // copy value
                             j++;
-                            // 增加0-9 和 ，的ascii过滤
-                            // if (serialReadBuffer[j] >= 0x30 && serialReadBuffer[j] <= 0x39 && serialReadBuffer[j] == 0x2C && serialReadBuffer[j] == 0x2E)
-                            // {
-                            //     serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-                            //     j++;
-                            // }
-                            // else
-                            // { // 如果数据不是0-9和，就发送上一条数据
-                            //     memcpy(&serialReadBuffer_clean_OUT, &Last_serialReadBuffer_clean_OUT, BUFFER_SIZE);
-                            //     j = 0; // clearing
-                            //     break; // 跳出循环
-                            // }
                         }
                     }
-                    sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    // memcpy(&Last_serialReadBuffer_clean_OUT, &serialReadBuffer_clean_OUT, BUFFER_SIZE);
-#if defined(DEBUG_MODE)
-                    Serial.printf(BLE_Send_out);
-#endif
-                    SerialBT.printf(BLE_Send_out);
                 }
+
+                // Serial.println(cmd_check);
+                CMD_String.trim();
+               //Serial.println(CMD_String);
+                // CMD_String.toUpperCase();
+                // cmd from BLE cleaning
+                StringTokenizer BLE_CMD(CMD_String, ",");
+
+                while (BLE_CMD.hasNext())
+                {
+                    CMD_Data[i] = BLE_CMD.nextToken(); // prints the next token in the string
+                                                       // Serial.println(CMD_Data[i]);
+                    i++;
+                }
+                i = 0;
+                CMD_String = "";
+
+                sprintf(BLE_Send_out, "#%s,%s,%s,%s,%s;\r\n", CMD_Data[0], CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
+#if defined(DEBUG_MODE)
+                 Serial.printf(BLE_Send_out);
+#endif
+                SerialBT.printf(BLE_Send_out);
                 xSemaphoreGive(xserialReadBufferMutex);
+                delay(50);
             }
-            delay(50);
         }
     }
 }
@@ -304,7 +311,6 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("Start ReadBtTask\n");
 #endif
-
 
     xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
 #if defined(DEBUG_MODE)
