@@ -13,6 +13,8 @@
         "algorithm": "cpp",
         "unordered_set": "cpp",
         "functional": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "chrono": "cpp",
+        "cmath": "cpp"
     }
 }

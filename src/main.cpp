@@ -30,7 +30,13 @@ BleSerial SerialBT;
 String CMD_Data[8];
 
 String local_IP;
-HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
+
+double BT_TEMP;
+double ET_TEMP;
+double AMB_TEMP;
+int levelOT1;
+int levelIO3;
+extern double pid_sv;
 
 // WebServer server(80);
 
@@ -61,7 +67,7 @@ void startBluetooth()
         delay(1000);
         Serial.println("wifi not ready");
 
-        if (tries++ > 5)
+        if (tries++ > 2)
         {
             // init wifi
             Serial.println("WiFi.mode(AP):");
@@ -117,8 +123,8 @@ void ReadSerialTask(void *e)
                         if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                         {
 
-                            j = 0;                             // clearing
-                            break;                             // 跳出循环
+                            j = 0; // clearing
+                            break; // 跳出循环
                         }
                         else
                         {
@@ -143,12 +149,21 @@ void ReadSerialTask(void *e)
                 i = 0;
                 CMD_String = "";
 
-                sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
+                // AMB_TEMP, ET_TEMP, BT_TEMP, levelOT1, levelIO3);
+                //  CMD_Data[0],CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]
+                AMB_TEMP = CMD_Data[0].toDouble();
+                ET_TEMP = CMD_Data[1].toDouble();
+                BT_TEMP = CMD_Data[2].toDouble();
+                levelOT1 = CMD_Data[3].toInt();
+                levelIO3 = CMD_Data[4].toInt();
+                pid_sv = CMD_Data[5].toDouble();
+
+                sprintf(BLE_Send_out, "#%4.2f,%4.2f,%d,%d;\r\n", ET_TEMP,BT_TEMP, levelOT1, levelIO3);
 #if defined(DEBUG_MODE)
-                 Serial.printf(BLE_Send_out);
+                Serial.printf(BLE_Send_out);
 #endif
                 SerialBT.printf(BLE_Send_out);
-                xSemaphoreGive(xserialReadBufferMutex);
+                xSemaphoreGive(xSerailDataMutex);
                 delay(50);
             }
         }
@@ -174,9 +189,6 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
         }
     }
 }
-
-
-
 
 void setup()
 {
@@ -253,12 +265,10 @@ void setup()
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
 
-
     // server.begin();
     // Serial.println("HTTP server started");
 }
 void loop()
 {
     mb.task();
-
 }
