@@ -194,13 +194,12 @@ void setup()
 {
 
     // Disable watchdog timers
-    disableCore0WDT();
-    disableCore1WDT();
+    // disableCore0WDT();
+    // disableCore1WDT();
     disableLoopWDT();
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-    Serial.printf("Disable watchdog timers\n");
 
     xSerailDataMutex = xSemaphoreCreateMutex();
     // Start Serial
@@ -216,31 +215,29 @@ void setup()
     Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 2, NULL);
     Serial.printf("Start Send_READ_Task\n");
-    xTaskCreate(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 1, &xTask_TC4_data2Modbus);
-    Serial.printf("Start TC4_data2Modbus\n");
-    xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
-    Serial.printf("Start Modbus_CMD2TC4\n");
+    // xTaskCreate(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 1, &xTask_TC4_data2Modbus);
+    // Serial.printf("Start TC4_data2Modbus\n");
+    // xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
+    // Serial.printf("Start Modbus_CMD2TC4\n");
 
     // INIT MODBUS
     mb.server(502); // Start Modbus IP //default port :502
 #if defined(DEBUG_MODE)
     Serial.printf("\nStart Modbus-TCP  service OK\n");
 #endif
-    // Add SENSOR_IREG register - Use addIreg() for analog Inputs
-    // PID ON:ambient,chan1,chan2,  heater duty, fan duty, SV
-    // AMB_TEMP,ET_HREG,BT_HREG,HEAT_HREG,FAN_HREG,PID_SV_HREG
-    // const uint16_t AMB_TEMP_HREG = 3001; //AMB_TEMP
-    // const uint16_t AMB_RH_HREG = 3002;
-    // const uint16_t BT_HREG = 3003;
-    // const uint16_t ET_HREG = 3004;
-    // const uint16_t HEAT_HREG = 3005; //OT1
-    // const uint16_t FAN_HREG = 3006; //IO3
-    // const uint16_t PID_SV_HREG = 3007; //PID_SV
-    // const uint16_t RESET_HREG = 3008;
-    // const uint16_t PID_ON_HREG = 3009;
-    // const uint16_t PID_P_HREG = 3010;
-    // const uint16_t PID_I_HREG = 3011;
-    // const uint16_t PID_D_HREG = 3012;
+
+// const uint16_t AMB_TEMP_HREG = 3001;
+// const uint16_t BT_HREG = 3002;
+// const uint16_t ET_HREG = 3003;
+// const uint16_t HEAT_HREG = 3004;
+// const uint16_t FAN_HREG = 3005;
+// const uint16_t PID_SV_HREG = 3006;
+// const uint16_t RESET_HREG = 3007;
+// const uint16_t PID_ON_HREG = 3008;
+// const uint16_t PID_STATUS_HREG = 3009;
+
+
+
 
     mb.addHreg(AMB_TEMP_HREG);
 
