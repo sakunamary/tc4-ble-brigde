@@ -17,54 +17,28 @@
 #include <driver/rtc_io.h>
 #include "soc/rtc_wdt.h"
 #include <HardwareSerial.h>
+#include <BleSerial.h>
 
 #include <WiFi.h>
 #include <WiFiClient.h>
-#include <WebServer.h>
-#include <ElegantOTA.h>
+// #include <WebServer.h>
+// #include <ElegantOTA.h>
+
+#include <StringTokenizer.h>
+
+BleSerial SerialBT;
+String CMD_Data[8];
 
 String local_IP;
 HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
 
-WebServer server(80);
+// WebServer server(80);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
 
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
-unsigned long ota_progress_millis = 0;
-
-void onOTAStart()
-{
-    // Log when OTA has started
-    Serial.println("OTA update started!");
-    // <Add your own code here>
-}
-
-void onOTAProgress(size_t current, size_t final)
-{
-    // Log every 1 second
-    if (millis() - ota_progress_millis > 1000)
-    {
-        ota_progress_millis = millis();
-        Serial.printf("OTA Progress Current: %u bytes, Final: %u bytes\n", current, final);
-    }
-}
-
-void onOTAEnd(bool success)
-{
-    // Log when OTA has finished
-    if (success)
-    {
-        Serial.println("OTA update finished successfully!");
-    }
-    else
-    {
-        Serial.println("There was an error during OTA update!");
-    }
-    // <Add your own code here>
-}
 
 String IpAddressToString(const IPAddress &ipAddress)
 {
@@ -92,7 +66,7 @@ void startBluetooth()
             // init wifi
             Serial.println("WiFi.mode(AP):");
             WiFi.mode(WIFI_AP);
-            WiFi.softAP(deviceName, "88888888"); // defualt IP address :192.168.4.1 password min 8 digis
+            WiFi.softAP(deviceName, "matchbox8888"); // defualt IP address :192.168.4.1 password min 8 digis
             break;
         }
     }
@@ -114,11 +88,16 @@ void startBluetooth()
 void ReadSerialTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 250 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
-    // String cmd_check;
     int j = 0;
+    int i = 0;
+
+    String CMD_String;
+#if defined(DEBUG_MODE)
+    String cmd_check;
+#endif
     while (true)
     {
         if (Serial_in.available())
@@ -126,30 +105,52 @@ void ReadSerialTask(void *e)
             if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+                CMD_String = String((char *)serialReadBuffer);
+#if defined(DEBUG_MODE)
                 // cmd_check = String((char *)serialReadBuffer);
                 // Serial.println(cmd_check);
+#endif
                 if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
                 {
                     while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
                     {
-                        if (serialReadBuffer[j] == '\n')
+                        if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                         {
-                            j = 0; // clearing
-                            break; // 跳出循环
+
+                            j = 0;                             // clearing
+                            break;                             // 跳出循环
                         }
                         else
                         {
                             serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+
                             j++;
                         }
                     }
-                    sprintf(BLE_Send_out, "#%s;\n", serialReadBuffer_clean_OUT);
-                    //Serial.printf(BLE_Send_out);
                 }
-                xSemaphoreGive(xSerailDataMutex);
-            }
 
-            delay(50);
+                // Serial.println(cmd_check);
+                CMD_String.trim();
+
+                StringTokenizer BLE_CMD(CMD_String, ",");
+
+                while (BLE_CMD.hasNext())
+                {
+                    CMD_Data[i] = BLE_CMD.nextToken(); // prints the next token in the string
+                                                       // Serial.println(CMD_Data[i]);
+                    i++;
+                }
+                i = 0;
+                CMD_String = "";
+
+                sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
+#if defined(DEBUG_MODE)
+                 Serial.printf(BLE_Send_out);
+#endif
+                SerialBT.printf(BLE_Send_out);
+                xSemaphoreGive(xserialReadBufferMutex);
+                delay(50);
+            }
         }
     }
 }
@@ -175,28 +176,6 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 }
 
 
-// Handle root url (/)
-void handle_root()
-{
-    char index_html[2048];
-    String ver = VERSION;
-    snprintf(index_html, 2048,
-             "<html>\
-<head>\
-<title>MATCH BOX SETUP</title>\
-    </head> \
-    <body>\
-        <main>\
-        <h1 align='center'>BLE version:%s</h1>\
-        <div align='center'><a href='/update' target='_blank'>FIRMWARE UPDATE</a>\
-        </main>\
-        </div>\
-    </body>\
-</html>\
-",
-             ver);
-    server.send(200, "text/html", index_html);
-}
 
 
 void setup()
@@ -252,7 +231,7 @@ void setup()
     // const uint16_t PID_D_HREG = 3012;
 
     mb.addHreg(AMB_TEMP_HREG);
-    mb.addHreg(AMB_RH_HREG);
+
     mb.addHreg(BT_HREG);
     mb.addHreg(ET_HREG);
 
@@ -263,12 +242,7 @@ void setup()
     mb.addHreg(PID_SV_HREG);
     mb.addHreg(PID_STATUS_HREG);
 
-    mb.addHreg(PID_P_HREG);
-    mb.addHreg(PID_I_HREG);
-    mb.addHreg(PID_D_HREG);
-
     // INIT MODBUS HREG VALUE
-    mb.Hreg(AMB_RH_HREG, 0);   // 初始化赋值
     mb.Hreg(AMB_TEMP_HREG, 0); // 初始化赋值
     mb.Hreg(BT_HREG, 0);       // 初始化赋值
     mb.Hreg(ET_HREG, 0);       // 初始化赋值
@@ -276,27 +250,15 @@ void setup()
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 30); // 初始化赋值
 
-    mb.Hreg(PID_P_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_I_HREG, 0); // 初始化赋值
-    mb.Hreg(PID_D_HREG, 0); // 初始化赋值
-
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
 
-    server.on("/", handle_root);
 
-    ElegantOTA.begin(&server); // Start ElegantOTA
-    // ElegantOTA callbacks
-    ElegantOTA.onStart(onOTAStart);
-    ElegantOTA.onProgress(onOTAProgress);
-    ElegantOTA.onEnd(onOTAEnd);
-
-    server.begin();
-    Serial.println("HTTP server started");
+    // server.begin();
+    // Serial.println("HTTP server started");
 }
 void loop()
 {
     mb.task();
-    server.handleClient();
-    ElegantOTA.loop();
+
 }
