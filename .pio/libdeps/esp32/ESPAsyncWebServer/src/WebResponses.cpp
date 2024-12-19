@@ -20,7 +20,6 @@
 */
 #include "ESPAsyncWebServer.h"
 #include "WebResponseImpl.h"
-#include "cbuf.h"
 
 using namespace asyncsrv;
 
@@ -38,7 +37,6 @@ void* memchr(void* ptr, int ch, size_t count) {
  *
  */
 
-#ifndef ESP8266
 const char* AsyncWebServerResponse::responseCodeToString(int code) {
   switch (code) {
     case 100:
@@ -127,96 +125,6 @@ const char* AsyncWebServerResponse::responseCodeToString(int code) {
       return T_HTTP_CODE_ANY;
   }
 }
-#else  // ESP8266
-const __FlashStringHelper* AsyncWebServerResponse::responseCodeToString(int code) {
-  switch (code) {
-    case 100:
-      return FPSTR(T_HTTP_CODE_100);
-    case 101:
-      return FPSTR(T_HTTP_CODE_101);
-    case 200:
-      return FPSTR(T_HTTP_CODE_200);
-    case 201:
-      return FPSTR(T_HTTP_CODE_201);
-    case 202:
-      return FPSTR(T_HTTP_CODE_202);
-    case 203:
-      return FPSTR(T_HTTP_CODE_203);
-    case 204:
-      return FPSTR(T_HTTP_CODE_204);
-    case 205:
-      return FPSTR(T_HTTP_CODE_205);
-    case 206:
-      return FPSTR(T_HTTP_CODE_206);
-    case 300:
-      return FPSTR(T_HTTP_CODE_300);
-    case 301:
-      return FPSTR(T_HTTP_CODE_301);
-    case 302:
-      return FPSTR(T_HTTP_CODE_302);
-    case 303:
-      return FPSTR(T_HTTP_CODE_303);
-    case 304:
-      return FPSTR(T_HTTP_CODE_304);
-    case 305:
-      return FPSTR(T_HTTP_CODE_305);
-    case 307:
-      return FPSTR(T_HTTP_CODE_307);
-    case 400:
-      return FPSTR(T_HTTP_CODE_400);
-    case 401:
-      return FPSTR(T_HTTP_CODE_401);
-    case 402:
-      return FPSTR(T_HTTP_CODE_402);
-    case 403:
-      return FPSTR(T_HTTP_CODE_403);
-    case 404:
-      return FPSTR(T_HTTP_CODE_404);
-    case 405:
-      return FPSTR(T_HTTP_CODE_405);
-    case 406:
-      return FPSTR(T_HTTP_CODE_406);
-    case 407:
-      return FPSTR(T_HTTP_CODE_407);
-    case 408:
-      return FPSTR(T_HTTP_CODE_408);
-    case 409:
-      return FPSTR(T_HTTP_CODE_409);
-    case 410:
-      return FPSTR(T_HTTP_CODE_410);
-    case 411:
-      return FPSTR(T_HTTP_CODE_411);
-    case 412:
-      return FPSTR(T_HTTP_CODE_412);
-    case 413:
-      return FPSTR(T_HTTP_CODE_413);
-    case 414:
-      return FPSTR(T_HTTP_CODE_414);
-    case 415:
-      return FPSTR(T_HTTP_CODE_415);
-    case 416:
-      return FPSTR(T_HTTP_CODE_416);
-    case 417:
-      return FPSTR(T_HTTP_CODE_417);
-    case 429:
-      return FPSTR(T_HTTP_CODE_429);
-    case 500:
-      return FPSTR(T_HTTP_CODE_500);
-    case 501:
-      return FPSTR(T_HTTP_CODE_501);
-    case 502:
-      return FPSTR(T_HTTP_CODE_502);
-    case 503:
-      return FPSTR(T_HTTP_CODE_503);
-    case 504:
-      return FPSTR(T_HTTP_CODE_504);
-    case 505:
-      return FPSTR(T_HTTP_CODE_505);
-    default:
-      return FPSTR(T_HTTP_CODE_ANY);
-  }
-}
-#endif // ESP8266
 
 AsyncWebServerResponse::AsyncWebServerResponse()
     : _code(0), _contentType(), _contentLength(0), _sendContentLength(true), _chunked(false), _headLength(0), _sentLength(0), _ackedLength(0), _writtenLength(0), _state(RESPONSE_SETUP) {
@@ -224,8 +132,6 @@ AsyncWebServerResponse::AsyncWebServerResponse()
     _headers.emplace_back(header);
   }
 }
-
-AsyncWebServerResponse::~AsyncWebServerResponse() = default;
 
 void AsyncWebServerResponse::setCode(int code) {
   if (_state == RESPONSE_SETUP)
@@ -446,7 +352,21 @@ size_t AsyncAbstractResponse::_ack(AsyncWebServerRequest* request, size_t len, u
     request->client()->close();
     return 0;
   }
+  // return a credit for each chunk of acked data (polls does not give any credits)
+  if (len)
+    ++_in_flight_credit;
+
+  // for chunked responses ignore acks if there are no _in_flight_credits left
+  if (_chunked && !_in_flight_credit) {
+#ifdef ESP32
+    log_d("(chunk) out of in-flight credits");
+#endif
+    return 0;
+  }
+
   _ackedLength += len;
+  _in_flight -= (_in_flight > len) ? len : _in_flight;
+  // get the size of available sock space
   size_t space = request->client()->space();
 
   size_t headLen = _head.length();
@@ -458,16 +378,31 @@ size_t AsyncAbstractResponse::_ack(AsyncWebServerRequest* request, size_t len, u
       String out = _head.substring(0, space);
       _head = _head.substring(space);
       _writtenLength += request->client()->write(out.c_str(), out.length());
+      _in_flight += out.length();
+      --_in_flight_credit; // take a credit
       return out.length();
     }
   }
 
   if (_state == RESPONSE_CONTENT) {
+    // for response data we need to control the queue and in-flight fragmentation. Sending small chunks could give low latency,
+    // but flood asynctcp's queue and fragment socket buffer space for large responses.
+    // Let's ignore polled acks and acks in case when we have more in-flight data then the available socket buff space.
+    // That way we could balance on having half the buffer in-flight while another half is filling up, while minimizing events in asynctcp q
+    if (_in_flight > space) {
+      // log_d("defer user call %u/%u", _in_flight, space);
+      //  take the credit back since we are ignoring this ack and rely on other inflight data
+      if (len)
+        --_in_flight_credit;
+      return 0;
+    }
+
     size_t outLen;
     if (_chunked) {
       if (space <= 8) {
         return 0;
       }
+
       outLen = space;
     } else if (!_sendContentLength) {
       outLen = space;
@@ -516,6 +451,8 @@ size_t AsyncAbstractResponse::_ack(AsyncWebServerRequest* request, size_t len, u
 
     if (outLen) {
       _writtenLength += request->client()->write((const char*)buf, outLen);
+      _in_flight += outLen;
+      --_in_flight_credit; // take a credit
     }
 
     if (_chunked) {
@@ -647,11 +584,6 @@ size_t AsyncAbstractResponse::_fillBufferAndProcessTemplates(uint8_t* data, size
 /*
  * File Response
  * */
-
-AsyncFileResponse::~AsyncFileResponse() {
-  if (_content)
-    _content.close();
-}
 
 void AsyncFileResponse::_setContentTypeFromPath(const String& path) {
 #if HAVE_EXTERN_GET_Content_Type_FUNCTION
@@ -868,24 +800,17 @@ AsyncResponseStream::AsyncResponseStream(const char* contentType, size_t bufferS
   _code = 200;
   _contentLength = 0;
   _contentType = contentType;
-  _content = std::unique_ptr<cbuf>(new cbuf(bufferSize)); // std::make_unique<cbuf>(bufferSize);
+  _content.reserve(bufferSize);
 }
 
-AsyncResponseStream::~AsyncResponseStream() = default;
-
 size_t AsyncResponseStream::_fillBuffer(uint8_t* buf, size_t maxLen) {
-  return _content->read((char*)buf, maxLen);
+  return _content.readBytes((char*)buf, maxLen);
 }
 
 size_t AsyncResponseStream::write(const uint8_t* data, size_t len) {
   if (_started())
     return 0;
-
-  if (len > _content->room()) {
-    size_t needed = len - _content->room();
-    _content->resizeAdd(needed);
-  }
-  size_t written = _content->write((const char*)data, len);
+  size_t written = _content.write(data, len);
   _contentLength += written;
   return written;
 }

@@ -185,12 +185,12 @@ class AsyncWebSocketControl {
         _data = NULL;
     }
 
-    virtual ~AsyncWebSocketControl() {
+    ~AsyncWebSocketControl() {
       if (_data != NULL)
         free(_data);
     }
 
-    virtual bool finished() const { return _finished; }
+    bool finished() const { return _finished; }
     uint8_t opcode() { return _opcode; }
     uint8_t len() { return _len + 2; }
     size_t send(AsyncClient* client) {
@@ -451,6 +451,8 @@ void AsyncWebSocketClient::close(uint16_t code, const char* message) {
   if (_status != WS_CONNECTED)
     return;
 
+  _status = WS_DISCONNECTING;
+
   if (code) {
     uint8_t packetLen = 2;
     if (message != NULL) {
@@ -496,30 +498,37 @@ void AsyncWebSocketClient::_onDisconnect() {
 }
 
 void AsyncWebSocketClient::_onData(void* pbuf, size_t plen) {
-  // Serial.println("onData");
   _lastMessageTime = millis();
   uint8_t* data = (uint8_t*)pbuf;
   while (plen > 0) {
     if (!_pstate) {
       const uint8_t* fdata = data;
+
       _pinfo.index = 0;
       _pinfo.final = (fdata[0] & 0x80) != 0;
       _pinfo.opcode = fdata[0] & 0x0F;
       _pinfo.masked = (fdata[1] & 0x80) != 0;
       _pinfo.len = fdata[1] & 0x7F;
+
+      // log_d("WS[%" PRIu32 "]: _onData: %" PRIu32, _clientId, plen);
+      // log_d("WS[%" PRIu32 "]: _status = %" PRIu32, _clientId, _status);
+      // log_d("WS[%" PRIu32 "]: _pinfo: index: %" PRIu64 ", final: %" PRIu8 ", opcode: %" PRIu8 ", masked: %" PRIu8 ", len: %" PRIu64, _clientId, _pinfo.index, _pinfo.final, _pinfo.opcode, _pinfo.masked, _pinfo.len);
+
       data += 2;
       plen -= 2;
-      if (_pinfo.len == 126) {
+
+      if (_pinfo.len == 126 && plen >= 2) {
         _pinfo.len = fdata[3] | (uint16_t)(fdata[2]) << 8;
         data += 2;
         plen -= 2;
-      } else if (_pinfo.len == 127) {
+
+      } else if (_pinfo.len == 127 && plen >= 8) {
         _pinfo.len = fdata[9] | (uint16_t)(fdata[8]) << 8 | (uint32_t)(fdata[7]) << 16 | (uint32_t)(fdata[6]) << 24 | (uint64_t)(fdata[5]) << 32 | (uint64_t)(fdata[4]) << 40 | (uint64_t)(fdata[3]) << 48 | (uint64_t)(fdata[2]) << 56;
         data += 8;
         plen -= 8;
       }
 
-      if (_pinfo.masked) {
+      if (_pinfo.masked && plen >= 4) { // if ws.close() is called, Safari sends a close frame with plen 2 and masked bit set. We must not decrement plen which is already 0.
         memcpy(_pinfo.mask, data, 4);
         data += 4;
         plen -= 4;
@@ -544,7 +553,7 @@ void AsyncWebSocketClient::_onData(void* pbuf, size_t plen) {
         }
       }
       if (datalen > 0)
-        _server->_handleEvent(this, WS_EVT_DATA, (void*)&_pinfo, (uint8_t*)data, datalen);
+        _server->_handleEvent(this, WS_EVT_DATA, (void*)&_pinfo, data, datalen);
 
       _pinfo.index += datalen;
     } else if ((datalen + _pinfo.index) == _pinfo.len) {
@@ -568,11 +577,12 @@ void AsyncWebSocketClient::_onData(void* pbuf, size_t plen) {
           _queueControl(WS_DISCONNECT, data, datalen);
         }
       } else if (_pinfo.opcode == WS_PING) {
+        _server->_handleEvent(this, WS_EVT_PING, NULL, NULL, 0);
         _queueControl(WS_PONG, data, datalen);
       } else if (_pinfo.opcode == WS_PONG) {
         if (datalen != AWSC_PING_PAYLOAD_LEN || memcmp(AWSC_PING_PAYLOAD, data, AWSC_PING_PAYLOAD_LEN) != 0)
-          _server->_handleEvent(this, WS_EVT_PONG, NULL, data, datalen);
-      } else if (_pinfo.opcode < 8) { // continuation or text/binary frame
+          _server->_handleEvent(this, WS_EVT_PONG, NULL, NULL, 0);
+      } else if (_pinfo.opcode < WS_DISCONNECT) { // continuation or text/binary frame
         _server->_handleEvent(this, WS_EVT_DATA, (void*)&_pinfo, data, datalen);
         if (_pinfo.final)
           _pinfo.num = 0;
@@ -586,7 +596,7 @@ void AsyncWebSocketClient::_onData(void* pbuf, size_t plen) {
     }
 
     // restore byte as _handleEvent may have added a null terminator i.e., data[len] = 0;
-    if (datalen > 0)
+    if (datalen)
       data[datalen] = datalast;
 
     data += datalen;
@@ -1121,14 +1131,8 @@ const char __WS_STR_UUID[] PROGMEM = {"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"};
 #define WS_STR_ACCEPT     FPSTR(__WS_STR_ACCEPT)
 #define WS_STR_UUID       FPSTR(__WS_STR_UUID)
 
-bool AsyncWebSocket::canHandle(AsyncWebServerRequest* request) {
-  if (!_enabled)
-    return false;
-
-  if (request->method() != HTTP_GET || !request->url().equals(_url) || !request->isExpectedRequestedConnType(RCT_WS))
-    return false;
-
-  return true;
+bool AsyncWebSocket::canHandle(AsyncWebServerRequest* request) const {
+  return _enabled && request->isWebSocketUpgrade() && request->url().equals(_url);
 }
 
 void AsyncWebSocket::handleRequest(AsyncWebServerRequest* request) {

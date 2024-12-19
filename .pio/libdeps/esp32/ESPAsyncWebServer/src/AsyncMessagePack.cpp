@@ -44,18 +44,14 @@ AsyncCallbackMessagePackWebHandler::AsyncCallbackMessagePackWebHandler(const Str
     : _uri(uri), _method(HTTP_GET | HTTP_POST | HTTP_PUT | HTTP_PATCH), _onRequest(onRequest), _maxContentLength(16384) {}
   #endif
 
-bool AsyncCallbackMessagePackWebHandler::canHandle(AsyncWebServerRequest* request) {
-  if (!_onRequest)
-    return false;
-
-  WebRequestMethodComposite request_method = request->method();
-  if (!(_method & request_method))
+bool AsyncCallbackMessagePackWebHandler::canHandle(AsyncWebServerRequest* request) const {
+  if (!_onRequest || !request->isHTTP() || !(_method & request->method()))
     return false;
 
   if (_uri.length() && (_uri != request->url() && !request->url().startsWith(_uri + "/")))
     return false;
 
-  if (request_method != HTTP_GET && !request->contentType().equalsIgnoreCase(asyncsrv::T_application_msgpack))
+  if (request->method() != HTTP_GET && !request->contentType().equalsIgnoreCase(asyncsrv::T_application_msgpack))
     return false;
 
   return true;

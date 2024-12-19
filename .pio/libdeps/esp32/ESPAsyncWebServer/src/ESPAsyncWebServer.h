@@ -48,10 +48,10 @@
 
 #include "literals.h"
 
-#define ASYNCWEBSERVER_VERSION          "3.3.17"
+#define ASYNCWEBSERVER_VERSION          "3.4.3"
 #define ASYNCWEBSERVER_VERSION_MAJOR    3
-#define ASYNCWEBSERVER_VERSION_MINOR    3
-#define ASYNCWEBSERVER_VERSION_REVISION 17
+#define ASYNCWEBSERVER_VERSION_MINOR    4
+#define ASYNCWEBSERVER_VERSION_REVISION 3
 #define ASYNCWEBSERVER_FORK_mathieucarbou
 
 #ifdef ASYNCWEBSERVER_REGEX
@@ -140,7 +140,6 @@ class AsyncWebHeader {
     String _value;
 
   public:
-    AsyncWebHeader() = default;
     AsyncWebHeader(const AsyncWebHeader&) = default;
     AsyncWebHeader(const char* name, const char* value) : _name(name), _value(value) {}
     AsyncWebHeader(const String& name, const String& value) : _name(name), _value(value) {}
@@ -265,23 +264,21 @@ class AsyncWebServerRequest {
     size_t contentLength() const { return _contentLength; }
     bool multipart() const { return _isMultipart; }
 
-#ifndef ESP8266
     const char* methodToString() const;
     const char* requestedConnTypeToString() const;
-#else
-    const __FlashStringHelper* methodToString() const;
-    const __FlashStringHelper* requestedConnTypeToString() const;
-#endif
 
     RequestedConnectionType requestedConnType() const { return _reqconntype; }
-    bool isExpectedRequestedConnType(RequestedConnectionType erct1, RequestedConnectionType erct2 = RCT_NOT_USED, RequestedConnectionType erct3 = RCT_NOT_USED);
+    bool isExpectedRequestedConnType(RequestedConnectionType erct1, RequestedConnectionType erct2 = RCT_NOT_USED, RequestedConnectionType erct3 = RCT_NOT_USED) const;
+    bool isWebSocketUpgrade() const { return _method == HTTP_GET && isExpectedRequestedConnType(RCT_WS); }
+    bool isSSE() const { return _method == HTTP_GET && isExpectedRequestedConnType(RCT_EVENT); }
+    bool isHTTP() const { return isExpectedRequestedConnType(RCT_DEFAULT, RCT_HTTP); }
     void onDisconnect(ArDisconnectHandler fn);
 
     // hash is the string representation of:
     //  base64(user:pass) for basic or
     //  user:realm:md5(user:realm:pass) for digest
-    bool authenticate(const char* hash);
-    bool authenticate(const char* username, const char* credentials, const char* realm = NULL, bool isHash = false);
+    bool authenticate(const char* hash) const;
+    bool authenticate(const char* username, const char* credentials, const char* realm = NULL, bool isHash = false) const;
     void requestAuthentication(const char* realm = nullptr, bool isDigest = true) { requestAuthentication(isDigest ? AsyncAuthType::AUTH_DIGEST : AsyncAuthType::AUTH_BASIC, realm); }
     void requestAuthentication(AsyncAuthType method, const char* realm = nullptr, const char* _authFailMsg = nullptr);
 
@@ -524,9 +521,7 @@ using ArMiddlewareCallback = std::function<void(AsyncWebServerRequest* request, 
 class AsyncMiddleware {
   public:
     virtual ~AsyncMiddleware() {}
-    virtual void run(__unused AsyncWebServerRequest* request, __unused ArMiddlewareNext next) {
-      return next();
-    };
+    virtual void run(__unused AsyncWebServerRequest* request, __unused ArMiddlewareNext next) { return next(); };
 
   private:
     friend class AsyncWebHandler;
@@ -548,7 +543,7 @@ class AsyncMiddlewareFunction : public AsyncMiddleware {
 // For internal use only: super class to add/remove middleware to server or handlers
 class AsyncMiddlewareChain {
   public:
-    virtual ~AsyncMiddlewareChain();
+    ~AsyncMiddlewareChain();
 
     void addMiddleware(ArMiddlewareCallback fn);
     void addMiddleware(AsyncMiddleware* middleware);
@@ -588,9 +583,9 @@ class AuthenticationMiddleware : public AsyncMiddleware {
     bool generateHash();
 
     // returns true if the username and password (or hash) are set
-    bool hasCredentials() { return _hasCreds; }
+    bool hasCredentials() const { return _hasCreds; }
 
-    bool allowed(AsyncWebServerRequest* request);
+    bool allowed(AsyncWebServerRequest* request) const;
 
     void run(AsyncWebServerRequest* request, ArMiddlewareNext next);
 
@@ -648,7 +643,7 @@ class LoggingMiddleware : public AsyncMiddleware {
   public:
     void setOutput(Print& output) { _out = &output; }
     void setEnabled(bool enabled) { _enabled = enabled; }
-    bool isEnabled() { return _enabled && _out; }
+    bool isEnabled() const { return _enabled && _out; }
 
     void run(AsyncWebServerRequest* request, ArMiddlewareNext next);
 
@@ -736,18 +731,16 @@ class AsyncWebHandler : public AsyncMiddlewareChain {
 
   public:
     AsyncWebHandler() {}
-    AsyncWebHandler& setFilter(ArRequestFilterFunction fn);
-    AsyncWebHandler& setAuthentication(const char* username, const char* password);
-    AsyncWebHandler& setAuthentication(const String& username, const String& password) { return setAuthentication(username.c_str(), password.c_str()); };
-    bool filter(AsyncWebServerRequest* request) { return _filter == NULL || _filter(request); }
     virtual ~AsyncWebHandler() {}
-    virtual bool canHandle(AsyncWebServerRequest* request __attribute__((unused))) {
-      return false;
-    }
+    AsyncWebHandler& setFilter(ArRequestFilterFunction fn);
+    AsyncWebHandler& setAuthentication(const char* username, const char* password, AsyncAuthType authMethod = AsyncAuthType::AUTH_DIGEST);
+    AsyncWebHandler& setAuthentication(const String& username, const String& password, AsyncAuthType authMethod = AsyncAuthType::AUTH_DIGEST) { return setAuthentication(username.c_str(), password.c_str(), authMethod); };
+    bool filter(AsyncWebServerRequest* request) { return _filter == NULL || _filter(request); }
+    virtual bool canHandle(AsyncWebServerRequest* request __attribute__((unused))) const { return false; }
     virtual void handleRequest(__unused AsyncWebServerRequest* request) {}
     virtual void handleUpload(__unused AsyncWebServerRequest* request, __unused const String& filename, __unused size_t index, __unused uint8_t* data, __unused size_t len, __unused bool final) {}
     virtual void handleBody(__unused AsyncWebServerRequest* request, __unused uint8_t* data, __unused size_t len, __unused size_t index, __unused size_t total) {}
-    virtual bool isRequestHandlerTrivial() { return true; }
+    virtual bool isRequestHandlerTrivial() const { return true; }
 };
 
 /*
@@ -778,26 +771,22 @@ class AsyncWebServerResponse {
     WebResponseState _state;
 
   public:
-#ifndef ESP8266
     static const char* responseCodeToString(int code);
-#else
-    static const __FlashStringHelper* responseCodeToString(int code);
-#endif
 
   public:
     AsyncWebServerResponse();
-    virtual ~AsyncWebServerResponse();
-    virtual void setCode(int code);
+    virtual ~AsyncWebServerResponse() {}
+    void setCode(int code);
     int code() const { return _code; }
-    virtual void setContentLength(size_t len);
+    void setContentLength(size_t len);
     void setContentType(const String& type) { setContentType(type.c_str()); }
-    virtual void setContentType(const char* type);
-    virtual bool addHeader(const char* name, const char* value, bool replaceExisting = true);
+    void setContentType(const char* type);
+    bool addHeader(const char* name, const char* value, bool replaceExisting = true);
     bool addHeader(const String& name, const String& value, bool replaceExisting = true) { return addHeader(name.c_str(), value.c_str(), replaceExisting); }
     bool addHeader(const char* name, long value, bool replaceExisting = true) { return addHeader(name, String(value), replaceExisting); }
     bool addHeader(const String& name, long value, bool replaceExisting = true) { return addHeader(name.c_str(), value, replaceExisting); }
-    virtual bool removeHeader(const char* name);
-    virtual const AsyncWebHeader* getHeader(const char* name) const;
+    bool removeHeader(const char* name);
+    const AsyncWebHeader* getHeader(const char* name) const;
     const std::list<AsyncWebHeader>& getHeaders() const { return _headers; }
 
 #ifndef ESP8266
@@ -808,7 +797,7 @@ class AsyncWebServerResponse {
       _assembleHead(buffer, version);
       return buffer;
     }
-    virtual void _assembleHead(String& buffer, uint8_t version);
+    void _assembleHead(String& buffer, uint8_t version);
 
     virtual bool _started() const;
     virtual bool _finished() const;

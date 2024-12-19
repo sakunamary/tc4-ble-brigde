@@ -16,10 +16,7 @@ AsyncWebServer server(80);
 
 class CaptiveRequestHandler : public AsyncWebHandler {
   public:
-    CaptiveRequestHandler() {}
-    virtual ~CaptiveRequestHandler() {}
-
-    bool canHandle(__unused AsyncWebServerRequest* request) {
+    bool canHandle(__unused AsyncWebServerRequest* request) const override {
       return true;
     }
 

@@ -52,6 +52,20 @@ This fork is based on [yubox-node-org/ESPAsyncWebServer](https://github.com/yubo
 - (perf) Lot of code cleanup and optimizations
 - (perf) Performance improvements in terms of memory, speed and size
 
+---
+
+## WARNING: Important notes about future version 4.x
+
+This ESPAsyncWebServer fork is now at version 3.x.
+
+Next version 4.x will:
+
+1. Drop support for ESP8266, which goes EOL in a few years. All ESP8266 boards can be replaced by equivalent ESP32 boards.
+2. Drop support for Arduino 2.x and ESP-IDF 4.x. The library will be compatible with Arduino 3.x and ESP-IDF 5.x.
+3. Drop support for ArduinoJson 5.x and 6.x. The library will be compatible with ArduinoJson 7.x.
+
+So if you need one of these feature, you will have to stick with 3.x or another fork.
+
 ## Dependencies
 
 **WARNING** The library name was changed from `ESP Async WebServer` to `ESPAsyncWebServer` as per the Arduino Lint recommendations, but its name had to stay `ESP Async WebServer` in Arduino Registry.
@@ -61,13 +75,13 @@ This fork is based on [yubox-node-org/ESPAsyncWebServer](https://github.com/yubo
 ```ini
 lib_compat_mode = strict
 lib_ldf_mode = chain
-lib_deps = mathieucarbou/ESPAsyncWebServer @ 3.3.17
+lib_deps = mathieucarbou/ESPAsyncWebServer @ 3.4.3
 ```
 
 **Dependencies:**
 
-- **ESP32 with AsyncTCP**: `mathieucarbou/AsyncTCP @ 3.2.10`
-  Arduino IDE: [https://github.com/mathieucarbou/AsyncTCP#v3.2.10](https://github.com/mathieucarbou/AsyncTCP/releases)
+- **ESP32 with AsyncTCP**: `mathieucarbou/AsyncTCP @ 3.3.1`
+  Arduino IDE: [https://github.com/mathieucarbou/AsyncTCP#v3.3.1](https://github.com/mathieucarbou/AsyncTCP/releases)
 
 - **ESP32 with AsyncTCPSock**: `https://github.com/mathieucarbou/AsyncTCPSock/archive/refs/tags/v1.0.3-dev.zip`
 
@@ -85,9 +99,9 @@ AsyncTCPSock can be used instead of AsyncTCP by excluding AsyncTCP from the libr
 lib_compat_mode = strict
 lib_ldf_mode = chain
 lib_deps =
-  ; mathieucarbou/AsyncTCP @ 3.2.10
+  ; mathieucarbou/AsyncTCP @ 3.3.1
   https://github.com/mathieucarbou/AsyncTCPSock/archive/refs/tags/v1.0.3-dev.zip
-  mathieucarbou/ESPAsyncWebServer @ 3.3.17
+  mathieucarbou/ESPAsyncWebServer @ 3.4.3
 lib_ignore =
   AsyncTCP
   mathieucarbou/AsyncTCP
@@ -95,14 +109,14 @@ lib_ignore =
 
 ## Performance
 
-Performance of `mathieucarbou/ESPAsyncWebServer @ 3.3.17`:
+Performance of `mathieucarbou/ESPAsyncWebServer @ 3.4.3`:
 
 ```bash
 > brew install autocannon
 > autocannon -c 10 -w 10 -d 20 http://192.168.4.1
 ```
 
-With `mathieucarbou/AsyncTCP @ 3.2.10`
+With `mathieucarbou/AsyncTCP @ 3.3.1`
 
 [![](https://mathieu.carbou.me/ESPAsyncWebServer/perf-c10.png)](https://mathieu.carbou.me/ESPAsyncWebServer/perf-c10.png)
 
@@ -110,32 +124,53 @@ With `https://github.com/mathieucarbou/AsyncTCPSock/archive/refs/tags/v1.0.3-dev
 
 [![](https://mathieu.carbou.me/ESPAsyncWebServer/perf-c10-asynctcpsock.png)](https://mathieu.carbou.me/ESPAsyncWebServer/perf-c10-asynctcpsock.png)
 
+**SSE performance**
+
+In the example, there is an endpoint `/events` with some comments showing how these metrics are calculated.
+
+Test is running for 20 seconds with 10 connections.
+
+```
+// With AsyncTCP, with 10 workers: no message discarded from the queue
+//
+// Total: 2038 events, 509.50 events / second
+// Total: 2120 events, 530.00 events / second
+// Total: 2119 events, 529.75 events / second
+// Total: 2038 events, 509.50 events / second
+// Total: 2037 events, 509.25 events / second
+// Total: 2119 events, 529.75 events / second
+// Total: 2119 events, 529.75 events / second
+// Total: 2120 events, 530.00 events / second
+// Total: 2038 events, 509.50 events / second
+// Total: 2038 events, 509.50 events / second
+//
+// With AsyncTCPSock, with 10 workers: no message discarded from the queue
+//
+// Total: 2038 events, 509.50 events / second
+// Total: 2120 events, 530.00 events / second
+// Total: 2119 events, 529.75 events / second
+// Total: 2038 events, 509.50 events / second
+// Total: 2037 events, 509.25 events / second
+// Total: 2119 events, 529.75 events / second
+// Total: 2119 events, 529.75 events / second
+// Total: 2120 events, 530.00 events / second
+// Total: 2038 events, 509.50 events / second
+// Total: 2038 events, 509.50 events / second
+```
+
 ## Important recommendations
 
 Most of the crashes are caused by improper configuration of the library for the project.
 Here are some recommendations to avoid them.
 
-1. Set the running core to be on the same core of your application (usually core 1) `-D CONFIG_ASYNC_TCP_RUNNING_CORE=1`
-2. Set the stack size appropriately with `-D CONFIG_ASYNC_TCP_STACK_SIZE=16384`.
-   The default value of `16384` might be too much for your project.
-   You can look at the [MycilaTaskMonitor](https://mathieu.carbou.me/MycilaTaskMonitor) project to monitor the stack usage.
-3. You can change **if you know what you are doing** the task priority with `-D CONFIG_ASYNC_TCP_PRIORITY=10`.
-   Default is `10`.
-4. You can increase the queue size with `-D CONFIG_ASYNC_TCP_QUEUE_SIZE=128`.
-   Default is `64`.
-5. You can decrease the maximum ack time `-D CONFIG_ASYNC_TCP_MAX_ACK_TIME=3000`.
-   Default is `5000`.
-
-I personally use the following configuration in my projects because my WS messages can be big (up to 4k).
-If you have smaller messages, you can increase `WS_MAX_QUEUED_MESSAGES` to 128.
+I personally use the following configuration in my projects:
 
 ```c++
-  -D CONFIG_ASYNC_TCP_MAX_ACK_TIME=3000
-  -D CONFIG_ASYNC_TCP_PRIORITY=10
-  -D CONFIG_ASYNC_TCP_QUEUE_SIZE=128
-  -D CONFIG_ASYNC_TCP_RUNNING_CORE=1
-  -D CONFIG_ASYNC_TCP_STACK_SIZE=4096
-  -D WS_MAX_QUEUED_MESSAGES=64
+  -D CONFIG_ASYNC_TCP_MAX_ACK_TIME=5000 // (keep default)
+  -D CONFIG_ASYNC_TCP_PRIORITY=10 // (keep default)
+  -D CONFIG_ASYNC_TCP_QUEUE_SIZE=64 // (keep default)
+  -D CONFIG_ASYNC_TCP_RUNNING_CORE=1 // force async_tcp task to be on same core as the app (default is core 0)
+  -D CONFIG_ASYNC_TCP_STACK_SIZE=4096 // reduce the stack size (default is 16K)
 ```
 
 ## `AsyncWebSocketMessageBuffer` and `makeBuffer()`
@@ -574,7 +609,7 @@ Endpoints which consume JSON can use a special handler to get ready to use JSON 
 #include "ArduinoJson.h"
 
 AsyncCallbackJsonWebHandler* handler = new AsyncCallbackJsonWebHandler("/rest/endpoint", [](AsyncWebServerRequest *request, JsonVariant &json) {
-  JsonObject& jsonObj = json.as<JsonObject>();
+  JsonObject jsonObj = json.as<JsonObject>();
   // ...
 });
 server.addHandler(handler);
@@ -1232,7 +1267,7 @@ For actual serving the file.
 
 ### Param Rewrite With Matching
 
-It is possible to rewrite the request url with parameter matchg. Here is an example with one parameter:
+It is possible to rewrite the request url with parameter match. Here is an example with one parameter:
 Rewrite for example "/radio/{frequence}" -> "/radio?f={frequence}"
 
 ```cpp
