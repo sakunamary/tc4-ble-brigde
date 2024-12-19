@@ -225,7 +225,7 @@ void ReadSerialTask(void *e)
                 i = 0;
                 CMD_String = "";
 
-                sprintf(BLE_Send_out, "#%s,%s,%s,%s,%s;\r\n", CMD_Data[0], CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
+                sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
 #if defined(DEBUG_MODE)
                  Serial.printf(BLE_Send_out);
 #endif
