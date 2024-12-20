@@ -237,29 +237,30 @@ void setup()
     startBluetooth();
 
     // Start tasks
-    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
+    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 0);
 #if defined(DEBUG_MODE)
     Serial.printf("Start Send_READ_Task\n");
 #endif
 
-    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 1024*8, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
+    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 1024 * 8, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start ReadSerialTask\n");
 #endif
-    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 1024*8, NULL, 1, &xTASK_ReadBtTask_handle, 1);
+    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 1024 * 8, NULL, 1, &xTASK_ReadBtTask_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start ReadBtTask\n");
 #endif
 
-    xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 1024*4, NULL, 1, &xTask_TC4_data2Modbus_handle, 1);
+    xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 1024 * 4, NULL, 1, &xTask_TC4_data2Modbus_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start TC4_data2Modbus\n");
 #endif
 
-    xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024*8, NULL, 1, NULL);
+    xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 2, &xTask_Modbus_CMD2TC4_handle,1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start Modbus_CMD2TC4\n");
 #endif
+
     // INIT MODBUS
     mb.server(502); // Start Modbus IP //default port :502
 #if defined(DEBUG_MODE)
@@ -288,6 +289,10 @@ void setup()
     mb.addHreg(PID_SV_HREG);
     mb.addHreg(PID_STATUS_HREG);
 
+#if defined(DEBUG_MODE)
+    Serial.printf("modbus add Hreg OK\n");
+#endif
+
     // INIT MODBUS HREG VALUE
     mb.Hreg(AMB_TEMP_HREG, 0); // 初始化赋值
     mb.Hreg(BT_HREG, 0);       // 初始化赋值
@@ -299,6 +304,9 @@ void setup()
     mb.Hreg(PID_ON_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
+#if defined(DEBUG_MODE)
+    Serial.printf("modbus  Hreg init OK\n");
+#endif
 }
 void loop()
 {
