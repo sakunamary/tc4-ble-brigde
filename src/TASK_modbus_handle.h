@@ -20,7 +20,6 @@ const uint16_t RESET_HREG = 3007;
 const uint16_t PID_ON_HREG = 3008;
 const uint16_t PID_STATUS_HREG = 3009;
 
-
 extern double BT_TEMP;
 extern double ET_TEMP;
 extern double AMB_TEMP;
@@ -37,9 +36,6 @@ bool pid_on_status = false;
 
 bool PID_output;
 
-
-
-
 void TASK_TC4_data2Modbus(void *pvParameters)
 { // function
     (void)pvParameters;
@@ -49,19 +45,31 @@ void TASK_TC4_data2Modbus(void *pvParameters)
     xLastWakeTime = xTaskGetTickCount();
     uint8_t TEMP_DATA_Buffer[BUFFER_SIZE];
 
-    for (;;)
+  while(1)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
+        if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
         {
+
+            // const uint16_t AMB_TEMP_HREG = 3001;
+            // const uint16_t BT_HREG = 3002;
+            // const uint16_t ET_HREG = 3003;
+            // const uint16_t HEAT_HREG = 3004;
+            // const uint16_t FAN_HREG = 3005;
+            // const uint16_t PID_SV_HREG = 3006;
+            // const uint16_t RESET_HREG = 3007;
+            // const uint16_t PID_ON_HREG = 3008;
+            // const uint16_t PID_STATUS_HREG = 3009;
+
             mb.Hreg(BT_HREG, int(round(BT_TEMP * 10)));
             mb.Hreg(ET_HREG, int(round(ET_TEMP * 10)));
             mb.Hreg(HEAT_HREG, levelOT1);
             mb.Hreg(FAN_HREG, levelIO3);
+            mb.Hreg(PID_SV_HREG, int(round(pid_sv * 10)));     // 初始化赋值
 
-            // AMB_TEMP, ET_TEMP, BT_TEMP, levelOT1, levelIO3); 
+            // AMB_TEMP, ET_TEMP, BT_TEMP, levelOT1, levelIO3);
             //  CMD_Data[0],CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]
-            xSemaphoreGive(xSerailDataMutex);
+            xSemaphoreGive(xserialReadBufferMutex);
         }
     }
 }
@@ -70,13 +78,13 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 400 / portTICK_PERIOD_MS;
     const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
     while (1)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
+        if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
         {
             if (init_status)
             {
@@ -86,6 +94,7 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                 mb.Hreg(FAN_HREG, 0);
                 init_status = false;
                 pid_on_status == false;
+                break;
             }
             else
             { // RESET timer和风门时随时手动控制
@@ -93,12 +102,14 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                 {
                     Serial_in.printf("RESET\n");
                     mb.Hreg(RESET_HREG, 0);
+                    break;
                 }
 
                 if (last_FAN != mb.Hreg(FAN_HREG))
                 {
                     Serial_in.printf("IO3,%d\n", mb.Hreg(FAN_HREG));
                     last_FAN = mb.Hreg(FAN_HREG);
+                    break;
                 }
 
                 if (mb.Hreg(PID_ON_HREG) == 1)
@@ -112,6 +123,7 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                         Serial_in.printf("PID,SV,%d\n", mb.Hreg(PID_SV_HREG) / 10);
                         vTaskDelay(50);
                         Serial_in.printf("PID,ON\n"); // 发送指令
+                        break;
                     }
                     else
                     { // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
@@ -120,6 +132,7 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
 #endif
                         // 持续发送sv数据，TC4输出：#DATA_OUT，PID，OUT，温度，火力
                         Serial_in.printf("PID,SV,%d\n", mb.Hreg(PID_SV_HREG) / 10);
+                        break;
                     }
                 }
                 else // PID OFF
@@ -138,6 +151,7 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                         mb.Hreg(PID_SV_HREG, 0); // PID SV 归零
                         Serial_in.printf("PID,SV,0\n");
                         pid_on_status = !pid_on_status; // 同步状态量
+                        break;
                     }
                     else
                     {
@@ -148,13 +162,14 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                         {
                             Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
                             last_PWR = mb.Hreg(HEAT_HREG);
+                            break;
                         }
                     }
                 }
             }
         }
 
-        xSemaphoreGive(xSerailDataMutex);
+        xSemaphoreGive(xserialReadBufferMutex);
     }
 }
 

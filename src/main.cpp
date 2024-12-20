@@ -42,7 +42,6 @@ char deviceName[30];       // The serial string that is broadcast.
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
-
 String IpAddressToString(const IPAddress &ipAddress)
 {
     return String(ipAddress[0]) + String(".") +
@@ -61,6 +60,7 @@ void startBluetooth()
     // Init BLE Serial
     SerialBT.begin(deviceName);
     SerialBT.setTimeout(10);
+    Serial.println("BT is ready");
 
     while (WiFi.status() != WL_CONNECTED)
     {
@@ -109,7 +109,7 @@ void ReadSerialTask(void *e)
     {
         if (Serial_in.available())
         {
-            if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
             {
                 auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
                 CMD_String = String((char *)serialReadBuffer);
@@ -123,14 +123,14 @@ void ReadSerialTask(void *e)
                     {
                         if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                         {
-
+                            // CMD_String += serialReadBuffer[j]; // copy value
                             j = 0; // clearing
                             break; // 跳出循环
                         }
                         else
                         {
                             serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-
+                            // CMD_String += serialReadBuffer[j];                   // copy value
                             j++;
                         }
                     }
@@ -138,7 +138,9 @@ void ReadSerialTask(void *e)
 
                 // Serial.println(cmd_check);
                 CMD_String.trim();
-
+                // Serial.println(CMD_String);
+                //  CMD_String.toUpperCase();
+                //  cmd from BLE cleaning
                 StringTokenizer BLE_CMD(CMD_String, ",");
 
                 while (BLE_CMD.hasNext())
@@ -159,34 +161,57 @@ void ReadSerialTask(void *e)
                 levelIO3 = CMD_Data[4].toInt();
                 pid_sv = CMD_Data[5].toDouble();
 
-                sprintf(BLE_Send_out, "#%4.2f,%4.2f,%d,%d;\r\n", ET_TEMP, BT_TEMP, levelOT1, levelIO3);
+                sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
 #if defined(DEBUG_MODE)
                 Serial.printf(BLE_Send_out);
 #endif
                 SerialBT.printf(BLE_Send_out);
-                xSemaphoreGive(xSerailDataMutex);
+                xSemaphoreGive(xserialReadBufferMutex);
+                delay(50);
             }
         }
     }
 }
 
+// Task for reading BLE Serial
+void ReadBtTask(void *e)
+{
+    (void)e;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
+    while (true)
+    {
+        if (SerialBT.available())
+        {
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            {
+                auto count = SerialBT.readBytes(bleReadBuffer, BUFFER_SIZE);
+                Serial_in.write(bleReadBuffer, count);
+#if defined(DEBUG_MODE)
+                Serial.write(bleReadBuffer, count);
+#endif
+                xSemaphoreGive(xserialReadBufferMutex);
+            }
+            delay(50);
+        }
+    }
+}
 // Task for keep sending READ 指令写入queueCMD 传递给 TASK_SendCMDtoTC4
 void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
+    const TickType_t xTimeOut = 300 / portTICK_PERIOD_MS;
     String cmd;
     xLastWakeTime = xTaskGetTickCount();
 
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xSerailDataMutex, timeOut) == pdPASS)
+        if (xSemaphoreTake(xserialReadBufferMutex, xTimeOut) == pdPASS)
         {
             Serial_in.printf("READ\n");
-            xSemaphoreGive(xSerailDataMutex);
+            xSemaphoreGive(xserialReadBufferMutex);
         }
     }
 }
@@ -202,29 +227,44 @@ void setup()
     rtc_wdt_protect_off();
     rtc_wdt_disable();
 
-    xSerailDataMutex = xSemaphoreCreateMutex();
+    xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
     Serial.begin(BAUDRATE);
     Serial_in.begin(BAUDRATE, SERIAL_8N1, RX, TX);
-
+    Serial.printf("Serial is ready\n");
     // Start BLE
     startBluetooth();
 
     // Start tasks
-    xTaskCreate(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, NULL);
-    Serial.printf("Start ReadSerialTask\n");
-    xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 2, NULL);
-    Serial.printf("Start Send_READ_Task\n");
-    xTaskCreate(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 1, &xTask_TC4_data2Modbus);
-    Serial.printf("Start TC4_data2Modbus\n");
-    // xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
-    // Serial.printf("Start Modbus_CMD2TC4\n");
 
+    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadSerialTask\n");
+#endif
+    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 10240, NULL, 1, &xTASK_ReadBtTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadBtTask\n");
+#endif
+
+    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start Send_READ_Task\n");
+#endif
+
+    xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 2, NULL, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start TC4_data2Modbus\n");
+#endif
+
+    xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start Modbus_CMD2TC4\n");
+#endif
     // INIT MODBUS
     mb.server(502); // Start Modbus IP //default port :502
 #if defined(DEBUG_MODE)
-    Serial.printf("\nStart Modbus-TCP  service OK\n");
+    Serial.printf("Start Modbus-TCP  service OK\n");
 #endif
 
     // const uint16_t AMB_TEMP_HREG = 3001;
