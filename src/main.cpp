@@ -237,27 +237,26 @@ void setup()
     startBluetooth();
 
     // Start tasks
-
-    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 10240, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start ReadSerialTask\n");
-#endif
-    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 10240, NULL, 1, &xTASK_ReadBtTask_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start ReadBtTask\n");
-#endif
-
     xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start Send_READ_Task\n");
 #endif
 
-    xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 2, NULL, 1);
+    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 1024*8, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadSerialTask\n");
+#endif
+    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 1024*8, NULL, 1, &xTASK_ReadBtTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadBtTask\n");
+#endif
+
+    xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 1024*4, NULL, 1, &xTask_TC4_data2Modbus_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start TC4_data2Modbus\n");
 #endif
 
-    xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
+    xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024*8, NULL, 1, NULL);
 #if defined(DEBUG_MODE)
     Serial.printf("Start Modbus_CMD2TC4\n");
 #endif

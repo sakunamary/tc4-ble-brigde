@@ -13,7 +13,7 @@
 
 const int BUFFER_SIZE = 48;
 
-static TaskHandle_t xTask_TC4_data2Modbus = NULL;
+static TaskHandle_t xTask_TC4_data2Modbus_handle = NULL;
 static TaskHandle_t xTASK_Send_READ_CMDtoTC4_handle = NULL;
 static TaskHandle_t xTASK_ReadBtTask_handle = NULL;
 static TaskHandle_t xTASK_ReadSerialTask_handle = NULL;
