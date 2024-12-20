@@ -19,11 +19,7 @@
 #include <HardwareSerial.h>
 #include <BleSerial.h>
 
-#include <WiFi.h>
 #include <WiFiClient.h>
-// #include <WebServer.h>
-// #include <ElegantOTA.h>
-
 #include <StringTokenizer.h>
 
 BleSerial SerialBT;
@@ -46,6 +42,7 @@ char deviceName[30];       // The serial string that is broadcast.
 uint8_t bleReadBuffer[BUFFER_SIZE];
 uint8_t serialReadBuffer[BUFFER_SIZE];
 
+
 String IpAddressToString(const IPAddress &ipAddress)
 {
     return String(ipAddress[0]) + String(".") +
@@ -61,13 +58,17 @@ void startBluetooth()
     WiFi.macAddress(unitMACAddress);
     sprintf(deviceName, "MATCHBOX_%02X%02X%02X", unitMACAddress[3], unitMACAddress[4], unitMACAddress[5]);
 
+    // Init BLE Serial
+    SerialBT.begin(deviceName);
+    SerialBT.setTimeout(10);
+
     while (WiFi.status() != WL_CONNECTED)
     {
 
         delay(1000);
         Serial.println("wifi not ready");
 
-        if (tries++ > 2)
+        if (tries++ > 1)
         {
             // init wifi
             Serial.println("WiFi.mode(AP):");
@@ -158,13 +159,12 @@ void ReadSerialTask(void *e)
                 levelIO3 = CMD_Data[4].toInt();
                 pid_sv = CMD_Data[5].toDouble();
 
-                sprintf(BLE_Send_out, "#%4.2f,%4.2f,%d,%d;\r\n", ET_TEMP,BT_TEMP, levelOT1, levelIO3);
+                sprintf(BLE_Send_out, "#%4.2f,%4.2f,%d,%d;\r\n", ET_TEMP, BT_TEMP, levelOT1, levelIO3);
 #if defined(DEBUG_MODE)
                 Serial.printf(BLE_Send_out);
 #endif
                 SerialBT.printf(BLE_Send_out);
                 xSemaphoreGive(xSerailDataMutex);
-                delay(50);
             }
         }
     }
@@ -175,6 +175,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
+    const TickType_t timeOut = 250 / portTICK_PERIOD_MS;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
     String cmd;
     xLastWakeTime = xTaskGetTickCount();
@@ -182,7 +183,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     for (;;)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xSerailDataMutex, xIntervel) == pdPASS)
+        if (xSemaphoreTake(xSerailDataMutex, timeOut) == pdPASS)
         {
             Serial_in.printf("READ\n");
             xSemaphoreGive(xSerailDataMutex);
@@ -215,8 +216,8 @@ void setup()
     Serial.printf("Start ReadSerialTask\n");
     xTaskCreate(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 10240, NULL, 2, NULL);
     Serial.printf("Start Send_READ_Task\n");
-    // xTaskCreate(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 1, &xTask_TC4_data2Modbus);
-    // Serial.printf("Start TC4_data2Modbus\n");
+    xTaskCreate(TASK_TC4_data2Modbus, "TC4_data2Modbus", 10240, NULL, 1, &xTask_TC4_data2Modbus);
+    Serial.printf("Start TC4_data2Modbus\n");
     // xTaskCreate(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 10240, NULL, 1, NULL);
     // Serial.printf("Start Modbus_CMD2TC4\n");
 
@@ -226,21 +227,17 @@ void setup()
     Serial.printf("\nStart Modbus-TCP  service OK\n");
 #endif
 
-// const uint16_t AMB_TEMP_HREG = 3001;
-// const uint16_t BT_HREG = 3002;
-// const uint16_t ET_HREG = 3003;
-// const uint16_t HEAT_HREG = 3004;
-// const uint16_t FAN_HREG = 3005;
-// const uint16_t PID_SV_HREG = 3006;
-// const uint16_t RESET_HREG = 3007;
-// const uint16_t PID_ON_HREG = 3008;
-// const uint16_t PID_STATUS_HREG = 3009;
-
-
-
+    // const uint16_t AMB_TEMP_HREG = 3001;
+    // const uint16_t BT_HREG = 3002;
+    // const uint16_t ET_HREG = 3003;
+    // const uint16_t HEAT_HREG = 3004;
+    // const uint16_t FAN_HREG = 3005;
+    // const uint16_t PID_SV_HREG = 3006;
+    // const uint16_t RESET_HREG = 3007;
+    // const uint16_t PID_ON_HREG = 3008;
+    // const uint16_t PID_STATUS_HREG = 3009;
 
     mb.addHreg(AMB_TEMP_HREG);
-
     mb.addHreg(BT_HREG);
     mb.addHreg(ET_HREG);
 
@@ -248,6 +245,7 @@ void setup()
     mb.addHreg(FAN_HREG);
     mb.addHreg(RESET_HREG);
 
+    mb.addHreg(PID_ON_HREG);
     mb.addHreg(PID_SV_HREG);
     mb.addHreg(PID_STATUS_HREG);
 
@@ -259,11 +257,9 @@ void setup()
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
     mb.Hreg(FAN_HREG, 30); // 初始化赋值
 
+    mb.Hreg(PID_ON_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
-
-    // server.begin();
-    // Serial.println("HTTP server started");
 }
 void loop()
 {

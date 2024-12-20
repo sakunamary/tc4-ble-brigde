@@ -38,7 +38,7 @@ bool pid_on_status = false;
 bool PID_output;
 
 
-HardwareSerial Serial_in(2); // D16 RX_drumer  D17 TX_drumer
+
 
 void TASK_TC4_data2Modbus(void *pvParameters)
 { // function
