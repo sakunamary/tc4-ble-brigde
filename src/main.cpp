@@ -157,12 +157,18 @@ void ReadSerialTask(void *e)
 
                 // AMB_TEMP, ET_TEMP, BT_TEMP, levelOT1, levelIO3);
                 //  CMD_Data[0],CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]
-                AMB_TEMP = CMD_Data[0].toDouble();
+                // AMB_TEMP = CMD_Data[0].toDouble();
                 ET_TEMP = CMD_Data[1].toDouble();
                 BT_TEMP = CMD_Data[2].toDouble();
                 levelOT1 = CMD_Data[3].toInt();
                 levelIO3 = CMD_Data[4].toInt();
                 pid_sv = CMD_Data[5].toDouble();
+
+                mb.Hreg(BT_HREG, int(round(BT_TEMP * 10)));
+                mb.Hreg(ET_HREG, int(round(ET_TEMP * 10)));
+                mb.Hreg(HEAT_HREG, levelOT1);
+                mb.Hreg(FAN_HREG, levelIO3);
+                mb.Hreg(PID_SV_HREG, int(round(pid_sv * 10))); // 初始化赋值
 
                 sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
 #if defined(DEBUG_MODE)
@@ -255,10 +261,10 @@ void setup()
     Serial.printf("Start ReadBtTask\n");
 #endif
 
-    xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 1024 * 4, NULL, 1, &xTask_TC4_data2Modbus_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start TC4_data2Modbus\n");
-#endif
+//     xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 1024 * 4, NULL, 1, &xTask_TC4_data2Modbus_handle, 1);
+// #if defined(DEBUG_MODE)
+//     Serial.printf("Start TC4_data2Modbus\n");
+// #endif
 
     xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 1, &xTask_Modbus_CMD2TC4_handle, 1);
 #if defined(DEBUG_MODE)
@@ -303,7 +309,7 @@ void setup()
     mb.Hreg(ET_HREG, 0);       // 初始化赋值
 
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
-    mb.Hreg(FAN_HREG, 0); // 初始化赋值
+    mb.Hreg(FAN_HREG, 0);  // 初始化赋值
 
     mb.Hreg(PID_ON_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
