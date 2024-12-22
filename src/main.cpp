@@ -33,6 +33,9 @@ double AMB_TEMP;
 int levelOT1;
 int levelIO3;
 extern double pid_sv;
+extern uint16_t last_FAN;
+extern uint16_t last_PWR;
+extern uint16_t last_SV;
 
 // WebServer server(80);
 
@@ -236,6 +239,7 @@ void setup()
     // Start BLE
     startBluetooth();
 
+    delay(2000);
     // Start tasks
     xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 0);
 #if defined(DEBUG_MODE)
@@ -256,7 +260,7 @@ void setup()
     Serial.printf("Start TC4_data2Modbus\n");
 #endif
 
-    xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 2, &xTask_Modbus_CMD2TC4_handle,1);
+    xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 1, &xTask_Modbus_CMD2TC4_handle, 1);
 #if defined(DEBUG_MODE)
     Serial.printf("Start Modbus_CMD2TC4\n");
 #endif
@@ -299,11 +303,17 @@ void setup()
     mb.Hreg(ET_HREG, 0);       // 初始化赋值
 
     mb.Hreg(HEAT_HREG, 0); // 初始化赋值
-    mb.Hreg(FAN_HREG, 30); // 初始化赋值
+    mb.Hreg(FAN_HREG, 0); // 初始化赋值
 
     mb.Hreg(PID_ON_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
+
+    last_FAN = mb.Hreg(FAN_HREG);
+    last_PWR = mb.Hreg(HEAT_HREG);
+    last_SV = mb.Hreg(PID_SV_HREG);
+    pid_on_status = false;
+
 #if defined(DEBUG_MODE)
     Serial.printf("modbus  Hreg init OK\n");
 #endif

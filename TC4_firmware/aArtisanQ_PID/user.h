@@ -72,13 +72,13 @@
 
 ////////////////////
 // BAUD Rate for serial communications
-#define BAUD 115200
+#define BAUD 9600
 
 ////////////////////
 // Analogue inputs (optional)
 // Comment out if not required
-#define ANALOGUE1 // if potentiometer connected on ANLG1
-#define ANALOGUE2 // if potentiometer connected on ANLG2
+//#define ANALOGUE1 // if potentiometer connected on ANLG1
+//#define ANALOGUE2 // if potentiometer connected on ANLG2
 
 ////////////////////
 // Duty Cycle Adjustment Increment
