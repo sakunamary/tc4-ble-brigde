@@ -162,7 +162,7 @@
 // 20230328 Bug fix in IO3;xxx command. MIN_IO3 and MAX_IO3 checks added.
 // 20240203 add ACK_DATA mode. so that , extract modules can sync the running data with TC4
 
-#define BANNER_ARTISAN "aArtisanQ_PID 6_9"
+#define BANNER_ARTISAN "MATCH BOX V1"
 
 // this library included with the arduino distribution
 #include <Wire.h>

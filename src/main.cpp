@@ -111,15 +111,6 @@ void handle_root()
     server.send(200, "text/html", index_html);
 }
 
-// String processor(const String &var)
-// {
-//     if (var == "version")
-//     {
-//         return VERSION;
-//     }
-//     return String();
-// }
-
 void startBluetooth()
 {
     byte tries = 0;
@@ -162,6 +153,7 @@ void startBluetooth()
         local_IP = IpAddressToString(WiFi.localIP());
     }
     // Serial.printf("Start Bluetooth\n");
+    delay(2000);
 }
 
 // Task for reading Serial Port
@@ -196,14 +188,14 @@ void ReadSerialTask(void *e)
                     {
                         if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                         {
-                            //CMD_String += serialReadBuffer[j]; // copy value
-                            j = 0;                             // clearing
-                            break;                             // 跳出循环
+                            // CMD_String += serialReadBuffer[j]; // copy value
+                            j = 0; // clearing
+                            break; // 跳出循环
                         }
                         else
                         {
                             serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-                            //CMD_String += serialReadBuffer[j];                   // copy value
+                            // CMD_String += serialReadBuffer[j];                   // copy value
                             j++;
                         }
                     }
@@ -211,9 +203,9 @@ void ReadSerialTask(void *e)
 
                 // Serial.println(cmd_check);
                 CMD_String.trim();
-               //Serial.println(CMD_String);
-                // CMD_String.toUpperCase();
-                // cmd from BLE cleaning
+                // Serial.println(CMD_String);
+                //  CMD_String.toUpperCase();
+                //  cmd from BLE cleaning
                 StringTokenizer BLE_CMD(CMD_String, ",");
 
                 while (BLE_CMD.hasNext())
@@ -227,7 +219,7 @@ void ReadSerialTask(void *e)
 
                 sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
 #if defined(DEBUG_MODE)
-                 Serial.printf(BLE_Send_out);
+                Serial.printf(BLE_Send_out);
 #endif
                 SerialBT.printf(BLE_Send_out);
                 xSemaphoreGive(xserialReadBufferMutex);
@@ -284,13 +276,11 @@ void setup()
 {
 
     // Disable watchdog timers
-    // disableCore0WDT();
-    // disableCore1WDT();
+
     disableLoopWDT();
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-    // Serial.printf("Disable watchdog timers\n");
 
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
