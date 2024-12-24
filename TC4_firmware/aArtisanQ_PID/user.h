@@ -77,8 +77,8 @@
 ////////////////////
 // Analogue inputs (optional)
 // Comment out if not required
-//#define ANALOGUE1 // if potentiometer connected on ANLG1
-//#define ANALOGUE2 // if potentiometer connected on ANLG2
+#define ANALOGUE1 // if potentiometer connected on ANLG1
+#define ANALOGUE2 // if potentiometer connected on ANLG2
 
 ////////////////////
 // Duty Cycle Adjustment Increment
@@ -95,9 +95,9 @@
 #define PID_CONTROL
 #define PID_CHAN 1 // physical channel for PID input (corresponding to thermocouple inputs T1-T4)
 #define CT 1500 // default cycle time for the PID, in ms
-#define PRO 3.10 // initial proportional parameter
-#define INT 0.15 // initial integral parameter
-#define DER 8.00 // initial derivative parameter
+#define PRO 3.20 // initial proportional parameter
+#define INT 0.12 // initial integral parameter
+#define DER 8.10 // initial derivative parameter
 
 //#define POM // enable Proportional on Measurement (NOTE: PID PARAMETERS WILL REQUIRE CHANGING). Disable for Proportional on Error.
 
@@ -111,7 +111,7 @@
 #define MIN_OT2 0 // Set output % for lower limit for OT2.  0% power will always be available
 #define MAX_OT2 100 // Set output % for upper limit for OT2
 
-#define MIN_IO3 30 // Set output % for lower limit for IO3.  0% power will always be available
+#define MIN_IO3 0 // Set output % for lower limit for IO3.  0% power will always be available
 #define MAX_IO3 100  // Set output % for upper limit for IO3
 
 // cut power to Heater if fan duty is less than HTR_CUTOFF_FAN_VAL (to protect heater in air roaster). Set to 0 for no cutoff
