@@ -36,43 +36,38 @@ bool pid_on_status = false;
 
 bool PID_output;
 
-void TASK_TC4_data2Modbus(void *pvParameters)
-{ // function
-    (void)pvParameters;
-    TickType_t xLastWakeTime;
-    const TickType_t timeOut = 500 / portTICK_PERIOD_MS;
-    const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
-    xLastWakeTime = xTaskGetTickCount();
-    uint8_t TEMP_DATA_Buffer[BUFFER_SIZE];
+// void TASK_TC4_data2Modbus(void *pvParameters)
+// { // function
+//     (void)pvParameters;
+//     TickType_t xLastWakeTime;
+//     const TickType_t timeOut = 500 / portTICK_PERIOD_MS;
+//     const TickType_t xIntervel = 1000 / portTICK_PERIOD_MS;
+//     xLastWakeTime = xTaskGetTickCount();
+//     uint8_t TEMP_DATA_Buffer[BUFFER_SIZE];
 
-    while (1)
-    {
-        vTaskDelayUntil(&xLastWakeTime, xIntervel);
-        if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
-        {
+//     while (1)
+//     {
+//         vTaskDelayUntil(&xLastWakeTime, xIntervel);
+//         if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+//         {
 
-            // const uint16_t AMB_TEMP_HREG = 3001;
-            // const uint16_t BT_HREG = 3002;
-            // const uint16_t ET_HREG = 3003;
-            // const uint16_t HEAT_HREG = 3004;
-            // const uint16_t FAN_HREG = 3005;
-            // const uint16_t PID_SV_HREG = 3006;
-            // const uint16_t RESET_HREG = 3007;
-            // const uint16_t PID_ON_HREG = 3008;
-            // const uint16_t PID_STATUS_HREG = 3009;
+//             // const uint16_t AMB_TEMP_HREG = 3001;
+//             // const uint16_t BT_HREG = 3002;
+//             // const uint16_t ET_HREG = 3003;
+//             // const uint16_t HEAT_HREG = 3004;
+//             // const uint16_t FAN_HREG = 3005;
+//             // const uint16_t PID_SV_HREG = 3006;
+//             // const uint16_t RESET_HREG = 3007;
+//             // const uint16_t PID_ON_HREG = 3008;
+//             // const uint16_t PID_STATUS_HREG = 3009;
 
-            mb.Hreg(BT_HREG, int(round(BT_TEMP * 10)));
-            mb.Hreg(ET_HREG, int(round(ET_TEMP * 10)));
-            //mb.Hreg(HEAT_HREG, levelOT1);
-            //mb.Hreg(FAN_HREG, levelIO3);
-            // mb.Hreg(PID_SV_HREG, int(round(pid_sv * 10))); // 初始化赋值
+//             mb.Hreg(BT_HREG, int(round(BT_TEMP * 10)));
+//             mb.Hreg(ET_HREG, int(round(ET_TEMP * 10)));
 
-            // AMB_TEMP, ET_TEMP, BT_TEMP, levelOT1, levelIO3);
-            //  CMD_Data[0],CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]
-            xSemaphoreGive(xserialReadBufferMutex);
-        }
-    }
-}
+//             xSemaphoreGive(xserialReadBufferMutex);
+//         }
+//     }
+// }
 
 void TASK_Modbus_CMD2TC4(void *pvParameters)
 {

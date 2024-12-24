@@ -229,8 +229,6 @@ void setup()
 {
 
     // Disable watchdog timers
-    // disableCore0WDT();
-    // disableCore1WDT();
     disableLoopWDT();
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
@@ -260,11 +258,6 @@ void setup()
 #if defined(DEBUG_MODE)
     Serial.printf("Start ReadBtTask\n");
 #endif
-
-//     xTaskCreatePinnedToCore(TASK_TC4_data2Modbus, "TC4_data2Modbus", 1024 * 4, NULL, 1, &xTask_TC4_data2Modbus_handle, 1);
-// #if defined(DEBUG_MODE)
-//     Serial.printf("Start TC4_data2Modbus\n");
-// #endif
 
     xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 1, &xTask_Modbus_CMD2TC4_handle, 1);
 #if defined(DEBUG_MODE)
