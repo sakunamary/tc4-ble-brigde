@@ -73,8 +73,8 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 300 / portTICK_PERIOD_MS;
-    const TickType_t xIntervel = 500 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 200 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     while (1)
