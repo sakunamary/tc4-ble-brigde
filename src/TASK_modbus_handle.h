@@ -27,9 +27,6 @@ extern int levelOT1;
 extern int levelIO3;
 double pid_sv = 0;
 
-uint16_t last_FAN;
-uint16_t last_PWR;
-uint16_t last_SV;
 bool init_status = true;
 
 bool pid_on_status = false;
@@ -73,45 +70,39 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
 {
     (void)pvParameters;
     TickType_t xLastWakeTime;
-    const TickType_t timeOut = 200 / portTICK_PERIOD_MS;
+    const TickType_t timeOut = 150 / portTICK_PERIOD_MS;
     const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
     xLastWakeTime = xTaskGetTickCount();
 
     while (1)
     {
         vTaskDelayUntil(&xLastWakeTime, xIntervel);
+
         if (xSemaphoreTake(xserialReadBufferMutex, timeOut) == pdPASS)
         {
-            // if (init_status)
-            // {
-            //     last_FAN = mb.Hreg(FAN_HREG);
-            //     last_PWR = mb.Hreg(HEAT_HREG);
-            //     mb.Hreg(PID_ON_HREG, 0);
-            //     mb.Hreg(FAN_HREG, 30);
-            //     init_status = false;
-            //     pid_on_status = false;
-            // }
-            // else
-            // {
-            // RESET timer和风门时随时手动控制
             if (mb.Hreg(RESET_HREG) != 0)
             {
                 Serial_in.printf("RESET\n");
                 mb.Hreg(RESET_HREG, 0);
             }
 
-            if (last_FAN != mb.Hreg(FAN_HREG))
+            if (levelIO3 != mb.Hreg(FAN_HREG))
             {
+                levelIO3 = mb.Hreg(FAN_HREG);
                 Serial_in.printf("IO3,%d\n", mb.Hreg(FAN_HREG));
-                last_FAN = mb.Hreg(FAN_HREG);
+#if defined(DEBUG_MODE)
+                Serial.printf("FAN HREG IO3 :%d , %d \n",mb.Hreg(FAN_HREG),levelIO3);
+#endif
+                
             }
 
+            // RESET timer和风门时随时手动控制
             if (mb.Hreg(PID_ON_HREG) == 1)
             {                               // PID ON
                 if (pid_on_status == false) // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == false
                 {
 #if defined(DEBUG_MODE)
-                    Serial.printf("4:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status); // PID ON 当前状态是关
+                    //   Serial.printf("4:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status); // PID ON 当前状态是关
 #endif
                     pid_on_status = !pid_on_status;
                     Serial_in.printf("PID,SV,%d\n", mb.Hreg(PID_SV_HREG) / 10);
@@ -121,9 +112,9 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                 else
                 { // 状态：mb.Hreg(PID_HREG) == 1 and pid_on_status == true
 #if defined(DEBUG_MODE)
-                    Serial.printf("6:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status);
+                  //  Serial.printf("6:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status);
 #endif
-                    // 持续发送sv数据，TC4输出：#DATA_OUT，PID，OUT，温度，火力
+                  // 持续发送sv数据，TC4输出：#DATA_OUT，PID，OUT，温度，火力
                     Serial_in.printf("PID,SV,%d\n", mb.Hreg(PID_SV_HREG) / 10);
                 }
             }
@@ -134,7 +125,7 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                     // 状态：mb.Hreg(PID_HREG) == 0 and pid_on_status == true
 
 #if defined(DEBUG_MODE)
-                    Serial.printf("1:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status);
+                    // Serial.printf("1:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status);
 #endif
                     Serial_in.printf("PID,OFF\n"); // 发送指令
                     mb.Hreg(PID_ON_HREG, 0);
@@ -147,12 +138,12 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
                 else
                 {
 #if defined(DEBUG_MODE)
-                    Serial.printf("2:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status);
+                    // Serial.printf("2:PID_HREG:%d,pid_on_status:%d:init:%d \n", mb.Hreg(PID_ON_HREG), pid_on_status, init_status);
 #endif
-                    if (last_PWR != mb.Hreg(HEAT_HREG))
+                    if (levelOT1 != mb.Hreg(HEAT_HREG))
                     {
                         Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
-                        last_PWR = mb.Hreg(HEAT_HREG);
+                        levelOT1 = mb.Hreg(HEAT_HREG);
                     }
                 }
                 //     }

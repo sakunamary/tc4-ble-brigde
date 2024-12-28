@@ -33,11 +33,7 @@ double AMB_TEMP;
 int levelOT1;
 int levelIO3;
 extern double pid_sv;
-extern uint16_t last_FAN;
-extern uint16_t last_PWR;
-extern uint16_t last_SV;
 
-// WebServer server(80);
 
 uint8_t unitMACAddress[6]; // Use MAC address in BT broadcast and display
 char deviceName[30];       // The serial string that is broadcast.
@@ -98,7 +94,7 @@ void startBluetooth()
 void ReadSerialTask(void *e)
 {
     (void)e;
-    const TickType_t xIntervel = 300 / portTICK_PERIOD_MS;
+    const TickType_t xIntervel = 200 / portTICK_PERIOD_MS;
     char BLE_Send_out[BUFFER_SIZE];
     uint8_t serialReadBuffer_clean_OUT[BUFFER_SIZE];
     int j = 0;
@@ -112,71 +108,78 @@ void ReadSerialTask(void *e)
     {
         if (Serial_in.available())
         {
-            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
-            {
-                auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
-                CMD_String = String((char *)serialReadBuffer);
+            auto count = Serial_in.readBytes(serialReadBuffer, BUFFER_SIZE);
+            CMD_String = String((char *)serialReadBuffer);
 #if defined(DEBUG_MODE)
-                // cmd_check = String((char *)serialReadBuffer);
-                // Serial.println(cmd_check);
+            // cmd_check = String((char *)serialReadBuffer);
+            // Serial.println(cmd_check);
 #endif
-                if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
+            if (serialReadBuffer[0] != 0x23) // 不等于# ，剔除其他无关数据
+            {
+                while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
                 {
-                    while (j < sizeof(serialReadBuffer) && sizeof(serialReadBuffer) > 0)
+                    if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
                     {
-                        if (serialReadBuffer[j] == '\n' || serialReadBuffer[j] == '\r')
-                        {
-                            // CMD_String += serialReadBuffer[j]; // copy value
-                            j = 0; // clearing
-                            break; // 跳出循环
-                        }
-                        else
-                        {
-                            serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
-                            // CMD_String += serialReadBuffer[j];                   // copy value
-                            j++;
-                        }
+                        // CMD_String += serialReadBuffer[j]; // copy value
+                        j = 0; // clearing
+                        break; // 跳出循环
+                    }
+                    else
+                    {
+                        serialReadBuffer_clean_OUT[j] = serialReadBuffer[j]; // copy value
+                        // CMD_String += serialReadBuffer[j];                   // copy value
+                        j++;
                     }
                 }
+            }
 
-                // Serial.println(cmd_check);
-                CMD_String.trim();
-                // Serial.println(CMD_String);
-                //  CMD_String.toUpperCase();
-                //  cmd from BLE cleaning
-                StringTokenizer BLE_CMD(CMD_String, ",");
+            // Serial.println(cmd_check);
+            CMD_String.trim();
+            // Serial.println(CMD_String);
+            //  CMD_String.toUpperCase();
+            //  cmd from BLE cleaning
+            StringTokenizer BLE_CMD(CMD_String, ",");
 
-                while (BLE_CMD.hasNext())
-                {
-                    CMD_Data[i] = BLE_CMD.nextToken(); // prints the next token in the string
-                                                       // Serial.println(CMD_Data[i]);
-                    i++;
-                }
-                i = 0;
-                CMD_String = "";
-
+            while (BLE_CMD.hasNext())
+            {
+                CMD_Data[i] = BLE_CMD.nextToken(); // prints the next token in the string
+                                                   // Serial.println(CMD_Data[i]);
+                i++;
+            }
+            i = 0;
+            CMD_String = "";
+            if (xSemaphoreTake(xDataMutex, xIntervel) == pdPASS)
+            {
                 // AMB_TEMP, ET_TEMP, BT_TEMP, levelOT1, levelIO3);
                 //  CMD_Data[0],CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]
-                // AMB_TEMP = CMD_Data[0].toDouble();
+                AMB_TEMP = CMD_Data[0].toDouble();
                 ET_TEMP = CMD_Data[1].toDouble();
                 BT_TEMP = CMD_Data[2].toDouble();
                 levelOT1 = CMD_Data[3].toInt();
                 levelIO3 = CMD_Data[4].toInt();
                 pid_sv = CMD_Data[5].toDouble();
-
+                xSemaphoreGive(xDataMutex);
+                // delay(50);
+            }
+            if (xSemaphoreTake(xDataMutex, xIntervel) == pdPASS)
+            {
                 mb.Hreg(BT_HREG, int(round(BT_TEMP * 10)));
                 mb.Hreg(ET_HREG, int(round(ET_TEMP * 10)));
                 mb.Hreg(HEAT_HREG, levelOT1);
                 mb.Hreg(FAN_HREG, levelIO3);
                 mb.Hreg(PID_SV_HREG, int(round(pid_sv * 10))); // 初始化赋值
 
+                xSemaphoreGive(xDataMutex);
+                // delay(50);
+            }
+            if (xSemaphoreTake(xserialReadBufferMutex, xIntervel) == pdPASS)
+            {
                 sprintf(BLE_Send_out, "#%s,%s,%s,%s;\r\n", CMD_Data[1], CMD_Data[2], CMD_Data[3], CMD_Data[4]);
 #if defined(DEBUG_MODE)
-                Serial.printf(BLE_Send_out);
+                // Serial.printf(BLE_Send_out);
 #endif
                 SerialBT.printf(BLE_Send_out);
                 xSemaphoreGive(xserialReadBufferMutex);
-                delay(50);
             }
         }
     }
@@ -210,7 +213,7 @@ void TASK_Send_READ_CMDtoTC4(void *pvParameters)
     (void)pvParameters;
     TickType_t xLastWakeTime;
     const TickType_t xIntervel = 1500 / portTICK_PERIOD_MS;
-    const TickType_t xTimeOut = 300 / portTICK_PERIOD_MS;
+    const TickType_t xTimeOut = 100 / portTICK_PERIOD_MS;
     String cmd;
     xLastWakeTime = xTaskGetTickCount();
 
@@ -233,7 +236,7 @@ void setup()
     esp_task_wdt_delete(NULL);
     rtc_wdt_protect_off();
     rtc_wdt_disable();
-
+    xDataMutex = xSemaphoreCreateMutex();
     xserialReadBufferMutex = xSemaphoreCreateMutex();
     // Start Serial
     Serial_in.setRxBufferSize(BUFFER_SIZE);
@@ -244,25 +247,6 @@ void setup()
     startBluetooth();
 
     delay(2000);
-    // Start tasks
-    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 0);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start Send_READ_Task\n");
-#endif
-
-    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 1024 * 8, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start ReadSerialTask\n");
-#endif
-    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 1024 * 8, NULL, 1, &xTASK_ReadBtTask_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start ReadBtTask\n");
-#endif
-
-    xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 1, &xTask_Modbus_CMD2TC4_handle, 1);
-#if defined(DEBUG_MODE)
-    Serial.printf("Start Modbus_CMD2TC4\n");
-#endif
 
     // INIT MODBUS
     mb.server(502); // Start Modbus IP //default port :502
@@ -301,20 +285,36 @@ void setup()
     mb.Hreg(BT_HREG, 0);       // 初始化赋值
     mb.Hreg(ET_HREG, 0);       // 初始化赋值
 
-    mb.Hreg(HEAT_HREG, 0); // 初始化赋值
-    mb.Hreg(FAN_HREG, 0);  // 初始化赋值
+    mb.Hreg(HEAT_HREG, levelOT1); // 初始化赋值
+    mb.Hreg(FAN_HREG, levelIO3);  // 初始化赋值
 
     mb.Hreg(PID_ON_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_SV_HREG, 0);     // 初始化赋值
     mb.Hreg(PID_STATUS_HREG, 0); // 初始化赋值
-
-    last_FAN = mb.Hreg(FAN_HREG);
-    last_PWR = mb.Hreg(HEAT_HREG);
-    last_SV = mb.Hreg(PID_SV_HREG);
     pid_on_status = false;
 
 #if defined(DEBUG_MODE)
     Serial.printf("modbus  Hreg init OK\n");
+#endif
+
+    // Start tasks
+    xTaskCreatePinnedToCore(TASK_Send_READ_CMDtoTC4, "Send_READ_Task", 2048, NULL, 1, &xTASK_Send_READ_CMDtoTC4_handle, 0);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start Send_READ_Task\n");
+#endif
+
+    xTaskCreatePinnedToCore(ReadSerialTask, "ReadSerialTask", 1024 * 8, NULL, 1, &xTASK_ReadSerialTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadSerialTask\n");
+#endif
+    xTaskCreatePinnedToCore(ReadBtTask, "ReadBtTask", 1024 * 8, NULL, 1, &xTASK_ReadBtTask_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start ReadBtTask\n");
+#endif
+
+    xTaskCreatePinnedToCore(TASK_Modbus_CMD2TC4, "Modbus_CMD2TC4", 1024 * 8, NULL, 1, &xTask_Modbus_CMD2TC4_handle, 1);
+#if defined(DEBUG_MODE)
+    Serial.printf("Start Modbus_CMD2TC4\n");
 #endif
 }
 void loop()
