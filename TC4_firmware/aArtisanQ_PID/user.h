@@ -111,7 +111,7 @@
 #define MIN_OT2 0 // Set output % for lower limit for OT2.  0% power will always be available
 #define MAX_OT2 100 // Set output % for upper limit for OT2
 
-#define MIN_IO3 0 // Set output % for lower limit for IO3.  0% power will always be available
+#define MIN_IO3 30 // Set output % for lower limit for IO3.  0% power will always be available
 #define MAX_IO3 100  // Set output % for upper limit for IO3
 
 // cut power to Heater if fan duty is less than HTR_CUTOFF_FAN_VAL (to protect heater in air roaster). Set to 0 for no cutoff

@@ -129,7 +129,7 @@ void TASK_Modbus_CMD2TC4(void *pvParameters)
 #endif
                     Serial_in.printf("PID,OFF\n"); // 发送指令
                     mb.Hreg(PID_ON_HREG, 0);
-                    mb.Hreg(HEAT_HREG, last_PWR); // 回读PID ON之前的OT1数据
+                    mb.Hreg(HEAT_HREG, levelOT1); // 回读PID ON之前的OT1数据
                     Serial_in.printf("OT1,%d\n", mb.Hreg(HEAT_HREG));
                     mb.Hreg(PID_SV_HREG, 0); // PID SV 归零
                     Serial_in.printf("PID,SV,0\n");
